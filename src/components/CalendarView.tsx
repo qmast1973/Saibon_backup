@@ -216,56 +216,58 @@ export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
         */
       >
         {/* Month Header & Nav */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2.5 mb-4">
+          {/* Row 1: Month Title & Month Nav (월 표시 행과 같은 행에 우측 정렬) */}
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
               {year}년 {String(month + 1).padStart(2, '0')}월
             </h2>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            <div className="flex items-center gap-1.5 mr-1 sm:mr-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={onOpenAiModal}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 h-8 rounded-xl flex items-center gap-1 transition shadow-sm"
-                title="AI로 텍스트에서 주문 자동 추출"
+                onClick={() => onChangeMonth(-1)}
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition"
+                title="이전 달"
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">빠른주문</span>
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 type="button"
-                id="selectedDayAddButton"
-                onClick={onOpenAddModal}
-                className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 h-8 rounded-xl flex items-center gap-1 transition shadow-sm"
+                onClick={() => onChangeMonth(1)}
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition"
+                title="다음 달"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{isMerchant ? '주문 추가' : '신규 입력'}</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onGoToToday}
+                className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold transition"
+              >
+                오늘
               </button>
             </div>
-            
+          </div>
+
+          {/* Row 2: Action Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <button
               type="button"
-              onClick={() => onChangeMonth(-1)}
-              className="w-8 h-8 rounded-xl hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition"
-              title="이전 달"
+              onClick={onOpenAiModal}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 h-8 rounded-xl flex items-center gap-1 transition shadow-sm"
+              title="AI로 텍스트에서 주문 자동 추출"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">빠른주문</span>
             </button>
             <button
               type="button"
-              onClick={() => onChangeMonth(1)}
-              className="w-8 h-8 rounded-xl hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition"
-              title="다음 달"
+              id="selectedDayAddButton"
+              onClick={onOpenAddModal}
+              className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 h-8 rounded-xl flex items-center gap-1 transition shadow-sm"
             >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onGoToToday}
-              className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold transition"
-            >
-              오늘
+              <Plus className="w-3.5 h-3.5" />
+              <span>{isMerchant ? '주문 추가' : '신규 입력'}</span>
             </button>
             {(currentUser?.role === 'buyer' || currentUser?.role === 'admin') && (
               <button

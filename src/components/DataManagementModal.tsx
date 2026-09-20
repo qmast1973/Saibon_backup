@@ -36,7 +36,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [confirmStep, setConfirmStep] = useState<'idle' | 'confirm_factory_reset' | 'confirm_full_reset'>('idle');
+  const [confirmStep, setConfirmStep] = useState<'idle' | 'confirm_factory_reset' | 'confirm_full_reset' | 'confirm_deduplicate'>('idle');
 
   const isAdmin = currentUser?.role === 'admin';
   const isSubAdmin = currentUser?.role === 'buyer' && currentUser?.isBuyerAdmin;
@@ -102,8 +102,6 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   };
 
   const handleDeduplicate = async () => {
-    if (!confirm('완전히 동일한(상호, 금액, 날짜, 비고 등) 중복 데이터를 1개만 남기고 모두 삭제합니다. 계속하시겠습니까?')) return;
-    
     setLoading(true);
     setStatusMessage(null);
     try {
@@ -111,7 +109,17 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
       const toDelete = [];
       
       transactions.forEach(t => {
-        const key = [t.date, String(t.store).trim(), t.market, String(t.floor).trim(), String(t.room).trim(), t.expense, t.income, String(t.manager).trim(), String(t.remark).trim()].join('|');
+        const tDate = t.date || t.businessDate || '';
+        const tStore = (t.store || '').trim();
+        const tMarket = (t.market || '').trim();
+        const tFloor = (t.floor || '').trim();
+        const tRoom = (t.room || '').trim();
+        const tExpense = Number(t.expense) || 0;
+        const tIncome = Number(t.income) || 0;
+        const tRemark = (t.remark || '').trim();
+
+        // 중복 판단 시 관리자(manager)는 제외하고 날짜, 상호, 건물, 층, 호수, 금액, 비고가 같으면 중복으로 간주
+        const key = [tDate, tStore, tMarket, tFloor, tRoom, tExpense, tIncome, tRemark].join('|');
         if (seen.has(key)) {
           toDelete.push(t);
         } else {
@@ -291,14 +299,41 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={handleDeduplicate}
-              className="w-full py-2 px-4 bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-md"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>중복 내역 1건으로 정리하기</span>}
-            </button>
+            {confirmStep !== 'confirm_deduplicate' ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setConfirmStep('confirm_deduplicate')}
+                className="w-full py-2 px-4 bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-md"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>중복 내역 1건으로 정리하기</span>}
+              </button>
+            ) : (
+              <div className="p-3 bg-amber-900/40 rounded-xl border border-amber-800 flex flex-col gap-2 mt-2">
+                <p className="text-xs text-amber-200 font-semibold text-center mb-1">
+                  정말로 중복 데이터를 모두 정리하시겠습니까?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmStep('idle')}
+                    className="flex-1 py-2 px-3 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold rounded-lg transition"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmStep('idle');
+                      handleDeduplicate();
+                    }}
+                    className="flex-1 py-2 px-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition shadow-md"
+                  >
+                    확인 및 진행
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Option 2: Reset Collections Only */}

@@ -268,6 +268,8 @@ export const BuyerWorkdayStatsScreen: React.FC<BuyerWorkdayStatsScreenProps> = R
       totalExpense: number;
       totalItemCount: number;
       totalIncome: number;
+      isMonthlyPurchase?: boolean;
+      monthlyPurchaseAmount?: number;
       orders: Transaction[];
     }>();
 
