@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updatePassword, updateProfile } from 'firebase/auth';
 import { get, onValue, ref, remove, set } from 'firebase/database';
 import type { User, UserRole } from '../types';
 import { auth, IS_DEMO, rtdb, withTimeout, write } from './firebase';
@@ -54,50 +54,89 @@ const authMessage = (e: unknown, fallback: string) => AUTH_ERRORS[(e as { code?:
 
 const WRONG_LOGIN = '아이디 또는 비밀번호가 올바르지 않습니다.';
 
+export const isPermissionDenied = (e: unknown) => /permission[_ ]denied/i.test(String((e as Error)?.message || e));
+
+const findUser = (users: User[], identifier: string) => {
+  const id = identifier.trim().toLowerCase();
+  return users.find(
+    u => userKey(u.username) === id || String(u.email || '').toLowerCase() === id || String(u.name || '').trim() === identifier.trim(),
+  );
+};
+
+/** 회원 정보 쓰기 권한을 위해 Firebase 이메일 로그인 상태를 만든다. 실패해도 조용히 넘어간다. */
+async function ensureFirebaseSession(email: string | undefined, password: string) {
+  if (!email || auth.currentUser?.email?.toLowerCase() === email.toLowerCase()) return;
+  await signInWithEmailAndPassword(auth, email, password).catch(() => undefined);
+}
+
 /**
- * 로그인. 아이디/이메일/이름으로 회원을 찾고 저장된 비밀번호 해시와 비교한다.
- * 해시가 없는 예전 계정은 Firebase 인증(이메일)으로 확인된 경우에만 로그인시키고 해시를 채운다.
+ * 로그인.
+ * DB 보안 규칙상 회원/주문 정보는 Firebase 이메일 로그인 상태에서만 읽을 수 있다.
+ * 그래서 아이디(또는 이메일)로 회원을 찾되, 이메일 계정으로 Firebase 로그인도 함께 해 두고 로그아웃 전까지 유지한다.
  */
 export async function signIn(identifier: string, password: string, knownUsers: User[]): Promise<User> {
   const id = identifier.trim().toLowerCase();
   if (!id || !password) throw new Error('아이디와 비밀번호를 입력해주세요.');
-
-  let users = knownUsers;
-  try {
-    users = await fetchUsers();
-  } catch {
-    // 오프라인이면 마지막으로 받은 회원 목록으로 확인
-  }
-  const user = users.find(
-    u => userKey(u.username) === id || String(u.email || '').toLowerCase() === id || String(u.name || '').trim() === identifier.trim(),
-  );
   const hash = await sha256(password);
 
-  if (user?.passwordHash && user.passwordHash === hash) return user;
-
-  // 해시가 다르거나 없으면 Firebase 이메일 인증으로 한 번 더 확인한다.
-  // (이메일로 비밀번호를 재설정한 경우에도 새 비밀번호로 로그인되도록 해시를 갱신)
-  const email = user?.email || (id.includes('@') ? id : '');
-  if (!email) throw new Error(user && !user.passwordHash ? '비밀번호가 설정되지 않은 계정입니다. 관리자에게 비밀번호 초기화를 요청하세요.' : WRONG_LOGIN);
-
+  // 1) 회원 목록 읽기 (이미 Firebase 로그인 상태이거나 규칙이 열려 있으면 성공)
+  let users = knownUsers;
+  let denied = false;
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    const profile: User = user || {
-      uid: cred.user.uid,
-      email,
-      username: email.split('@')[0],
-      name: cred.user.displayName || '회원',
-      role: 'merchant',
-      approved: false,
-      createdAt: new Date().toISOString(),
-    };
-    const saved = await saveUser({ ...profile, passwordHash: hash });
-    await signOut(auth).catch(() => undefined);
-    return saved;
+    users = await fetchUsers();
+  } catch (e) {
+    denied = isPermissionDenied(e);
+  }
+  let user = findUser(users, identifier);
+
+  // 2) 저장된 비밀번호와 같으면 통과 (이메일이 있으면 Firebase 로그인 상태도 맞춰 둔다)
+  if (user?.passwordHash && user.passwordHash === hash) {
+    await ensureFirebaseSession(user.email, password);
+    return user;
+  }
+
+  // 3) Firebase 이메일 로그인으로 확인
+  const email = user?.email || (id.includes('@') ? id : '');
+  if (!email) {
+    if (denied) throw new Error('서버가 회원 정보를 보여 주지 않습니다. 가입할 때 쓴 이메일 주소로 로그인해 주세요.');
+    throw new Error(user && !user.passwordHash ? '비밀번호가 설정되지 않은 계정입니다. 관리자에게 비밀번호 초기화를 요청하세요.' : WRONG_LOGIN);
+  }
+
+  let uid = '';
+  try {
+    uid = (await signInWithEmailAndPassword(auth, email, password)).user.uid;
   } catch (e) {
     const code = (e as { code?: string })?.code || '';
     throw new Error(code === 'auth/too-many-requests' || code === 'auth/network-request-failed' ? authMessage(e, WRONG_LOGIN) : WRONG_LOGIN);
   }
+
+  // 4) 로그인된 상태로 회원 목록을 다시 읽어 실제 계정을 찾는다
+  try {
+    users = await fetchUsers();
+  } catch (e) {
+    throw new Error(isPermissionDenied(e) ? '로그인은 됐지만 회원 정보를 읽을 권한이 없습니다. Firebase 데이터베이스 규칙을 확인해야 합니다.' : '회원 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+  }
+  user = users.find(u => u.uid === uid) || users.find(u => String(u.email || '').toLowerCase() === email.toLowerCase()) || findUser(users, identifier);
+
+  if (user) {
+    // 이메일로 비밀번호를 바꾼 경우 등: 새 비밀번호로 갱신
+    return user.passwordHash === hash ? user : saveUser({ ...user, passwordHash: hash });
+  }
+
+  // 5) Firebase 계정만 있고 회원 정보가 없으면 승인 대기 회원으로 새로 만든다 (기존 아이디는 절대 덮어쓰지 않음)
+  let key = userKey(email.split('@')[0]).replace(/[^a-z0-9._-]/g, '') || 'user';
+  if (users.some(u => userKey(u.username) === key)) key = `${key}_${uid.slice(0, 6).toLowerCase()}`;
+  return saveUser({
+    uid,
+    email,
+    username: key,
+    name: auth.currentUser?.displayName || key,
+    role: 'merchant',
+    approved: false,
+    passwordHash: hash,
+    createdAt: new Date().toISOString(),
+    createdBy: 'firebase_login',
+  });
 }
 
 export interface SignUpInput {
@@ -149,7 +188,6 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
     createdAt: new Date().toISOString(),
     createdBy: 'self_register',
   });
-  await signOut(auth).catch(() => undefined);
   return saved;
 }
 
@@ -160,6 +198,21 @@ export async function sendPasswordReset(email: string): Promise<void> {
     await sendPasswordResetEmail(auth, clean);
   } catch (e) {
     throw new Error(authMessage(e, '재설정 메일을 보내지 못했습니다.'));
+  }
+}
+
+/**
+ * 내 비밀번호 변경: 이메일 로그인 비밀번호도 같이 바꿔야 다음 로그인 때 서버 접속 권한이 유지된다.
+ */
+export async function changeOwnFirebasePassword(newPassword: string): Promise<void> {
+  if (IS_DEMO || !auth.currentUser) return;
+  try {
+    await updatePassword(auth.currentUser, newPassword);
+  } catch (e) {
+    const code = (e as { code?: string })?.code || '';
+    throw new Error(code === 'auth/requires-recent-login'
+      ? '보안을 위해 로그아웃 후 다시 로그인한 다음 비밀번호를 바꿔 주세요.'
+      : authMessage(e, '비밀번호를 바꾸지 못했습니다.'));
   }
 }
 

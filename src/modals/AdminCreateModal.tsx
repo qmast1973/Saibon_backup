@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { fetchUsers, sha256, userKey } from '../data/users';
+import { fetchUsers, isPermissionDenied, sha256, userKey } from '../data/users';
 import { sanitizeLoginId } from '../domain/keyboard';
 import { useApp } from '../state/AppContext';
 import { Button, Field, Input, Modal, PasswordInput } from '../components/ui';
@@ -29,7 +29,11 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       // 화면에 남은 목록이 아니라 서버의 최신 회원 목록으로 확인한다
-      const users = await fetchUsers();
+      const users = await fetchUsers().catch(e => {
+        throw new Error(isPermissionDenied(e)
+          ? '서버가 회원 정보를 보여 주지 않아 확인할 수 없습니다. 기존 관리자의 이메일 주소로 로그인한 뒤 설정 → 회원 관리에서 추가해 주세요.'
+          : '회원 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+      });
       const admins = users.filter(u => u.role === 'admin');
       if (admins.length > 0 && !loggedInAdmin) {
         const admin = admins.find(u => userKey(u.username) === userKey(form.authId));
