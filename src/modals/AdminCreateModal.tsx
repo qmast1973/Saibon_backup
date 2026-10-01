@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { fetchUsers, isPermissionDenied, sha256, userKey } from '../data/users';
+import { createEmailAccountForOther, fetchUsers, isPermissionDenied, sha256, userKey } from '../data/users';
 import { sanitizeLoginId } from '../domain/keyboard';
 import { useApp } from '../state/AppContext';
 import { Button, Field, Input, Modal, PasswordInput } from '../components/ui';
@@ -24,6 +24,8 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
     if (!form.name.trim() || !username) return setError('이름과 아이디를 입력해주세요.');
     if (!/^[a-z0-9._-]{4,}$/.test(username)) return setError('아이디는 영문/숫자 4자 이상으로 입력해주세요.');
     if (form.pw.length < 6) return setError('비밀번호는 6자 이상이어야 합니다.');
+    const email = form.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('서버 접속에 이메일 로그인이 필요해서 실제 이메일 주소를 꼭 입력해야 합니다.');
     if (form.pw !== form.pw2) return setError('비밀번호가 일치하지 않습니다.');
 
     setBusy(true);
@@ -41,10 +43,13 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
       }
       if (users.some(u => userKey(u.username) === username)) throw new Error('이미 사용 중인 아이디입니다.');
 
+      // 이메일 로그인 계정부터 만든다 (지금 로그인한 관리자 세션은 유지)
+      const uid = await createEmailAccountForOther(email, form.pw);
       await saveUser({
+        uid,
         username,
         name: form.name.trim(),
-        email: form.email.trim().toLowerCase() || `${username}@saipon.app`,
+        email,
         phone: form.phone.trim(),
         passwordHash: await sha256(form.pw),
         role: 'admin',
@@ -75,7 +80,7 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
         )}
         <Field label="이름 *"><Input required value={form.name} onChange={e => set('name')(e.target.value)} placeholder="관리자 이름" /></Field>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="이메일"><Input type="email" value={form.email} onChange={e => set('email')(e.target.value)} placeholder="선택" /></Field>
+          <Field label="이메일 *"><Input type="email" required value={form.email} onChange={e => set('email')(e.target.value)} placeholder="로그인에 쓸 이메일" /></Field>
           <Field label="전화번호"><Input type="tel" value={form.phone} onChange={e => set('phone')(e.target.value)} placeholder="선택" /></Field>
         </div>
         <Field label="아이디 * (영문/숫자 4자 이상)"><Input required value={form.id} onChange={e => set('id')(sanitizeLoginId(e.target.value).replace('@', ''))} autoComplete="off" /></Field>
