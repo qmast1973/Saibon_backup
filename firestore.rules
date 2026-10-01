@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['username', 'role']) &&
+             data.username is string && data.username.size() <= 100 &&
+             data.role is string && data.role.size() <= 20;
+    }
+    
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+                    && isValidId(userId)
+                    && isValidUser(incoming());
+                    
+      allow update: if isSignedIn()
+                    && isValidId(userId)
+                    && isValidUser(incoming())
+                    && incoming().diff(existing()).affectedKeys().hasAny(['username', 'role', 'name', 'password', 'storeName', 'region', 'phoneNumber', 'roleLabel', 'activeRegion', 'profileImage', 'createdAt']);
+                    
+      allow delete: if isSignedIn();
+    }
+    
+    function isValidMarketSettings(data) {
+      return data.keys().hasAll(['list', 'updatedAt']) &&
+             data.list is list && data.list.size() <= 500 &&
+             (data.list.size() == 0 || data.list[0] is string) &&
+             data.updatedAt is string && data.updatedAt.size() <= 50;
+    }
+
+    match /settings/{settingId} {
+      allow get: if true;
+      allow list: if true;
+      
+      allow create: if isSignedIn()
+                    && isValidId(settingId)
+                    && isValidMarketSettings(incoming());
+                    
+      allow update: if isSignedIn()
+                    && isValidId(settingId)
+                    && isValidMarketSettings(incoming())
+                    && incoming().diff(existing()).affectedKeys().hasAny(['list', 'updatedAt']);
+    }
+
+    match /collectionGroupRules/{ruleId} {
+      allow read: if true;
+      allow write: if true;
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+  }
+}
