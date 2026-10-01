@@ -3,7 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { fetchUsers, sha256, userKey } from '../data/users';
 import { sanitizeLoginId } from '../domain/keyboard';
 import { useApp } from '../state/AppContext';
-import { Button, Field, Input, Modal } from '../components/ui';
+import { Button, Field, Input, Modal, PasswordInput } from '../components/ui';
 
 /**
  * 관리자 계정 추가.
@@ -66,7 +66,7 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-2 rounded-xl border border-gray-800 bg-gray-950 p-3">
             <p className="text-[11px] text-gray-400">기존 관리자 인증 (최초 생성 시에는 비워 두세요)</p>
             <Input value={form.authId} onChange={e => set('authId')(sanitizeLoginId(e.target.value))} placeholder="기존 관리자 아이디" autoComplete="off" />
-            <Input type="password" value={form.authPw} onChange={e => set('authPw')(e.target.value)} placeholder="기존 관리자 비밀번호" autoComplete="off" />
+            <PasswordInput value={form.authPw} onChange={set('authPw')} placeholder="기존 관리자 비밀번호" autoComplete="off" />
           </div>
         )}
         <Field label="이름 *"><Input required value={form.name} onChange={e => set('name')(e.target.value)} placeholder="관리자 이름" /></Field>
@@ -76,8 +76,8 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
         </div>
         <Field label="아이디 * (영문/숫자 4자 이상)"><Input required value={form.id} onChange={e => set('id')(sanitizeLoginId(e.target.value).replace('@', ''))} autoComplete="off" /></Field>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="비밀번호 *"><Input type="password" required value={form.pw} onChange={e => set('pw')(e.target.value)} autoComplete="new-password" /></Field>
-          <Field label="비밀번호 확인 *"><Input type="password" required value={form.pw2} onChange={e => set('pw2')(e.target.value)} autoComplete="new-password" /></Field>
+          <Field label="비밀번호 *"><PasswordInput required value={form.pw} onChange={set('pw')} autoComplete="new-password" /></Field>
+          <Field label="비밀번호 확인 *"><PasswordInput required value={form.pw2} onChange={set('pw2')} autoComplete="new-password" /></Field>
         </div>
         {error && <p className="rounded-xl border border-rose-800 bg-rose-950/60 p-2.5 text-xs font-bold text-rose-200">{error}</p>}
         <Button type="submit" tone="danger" size="lg" disabled={busy} className="w-full">{busy ? '저장 중...' : '관리자 계정 만들기'}</Button>

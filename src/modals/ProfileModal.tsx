@@ -6,7 +6,7 @@ import { hasAdminAccess, isAdmin } from '../domain/access';
 import { MARKET_SEPARATOR_RE, NON_BUILDING_MARKETS, normalizeMarket } from '../domain/markets';
 import { uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
-import { Button, Field, Input, Modal, Select, Toggle, cx } from '../components/ui';
+import { Button, Field, Input, Modal, PasswordInput, Select, Toggle, cx } from '../components/ui';
 
 /** 내 정보 수정, 또는 관리자가 다른 회원 정보를 수정 */
 export function ProfileModal({ username, onClose }: { username: string; onClose: () => void }) {
@@ -190,7 +190,7 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
         {admin && editingOther && <Toggle checked={form.approved} onChange={v => set('approved', v)} label="가입 승인" description="승인된 회원만 로그인할 수 있습니다." />}
 
         <Field label="새 비밀번호" hint="바꿀 때만 입력 (6자 이상)">
-          <Input type="password" autoComplete="new-password" value={form.password} onChange={e => set('password', e.target.value)} />
+          <PasswordInput autoComplete="new-password" value={form.password} onChange={v => set('password', v)} placeholder="바꿀 때만 입력" />
         </Field>
       </form>
     </Modal>
