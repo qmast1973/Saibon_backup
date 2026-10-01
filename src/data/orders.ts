@@ -143,18 +143,38 @@ export function subscribeOrders(onChange: (orders: Transaction[]) => void, onErr
 /**
  * 저장 후 확정된 주문을 돌려준다 (새 주문이면 id 부여, 날짜가 바뀌면 이전 날짜 위치에서 삭제).
  */
-export function prepareForSave(t: Transaction): { tx: Transaction; updates: Record<string, OrderRecord | null> } {
+type OrderUpdates = Record<string, unknown>;
+
+/**
+ * 저장할 쓰기 목록을 만든다.
+ * previous(화면에 있던 직전 값)가 있고 날짜가 그대로면 바뀐 필드만 쓴다.
+ * 여러 사람이 같은 주문을 동시에 고쳐도(예: 삼촌은 대납금, 관리자는 비고) 서로의 변경을 덮어쓰지 않게 하기 위함.
+ */
+export function prepareForSave(t: Transaction, previous?: Transaction): { tx: Transaction; updates: OrderUpdates } {
   const date = normalizeDate(t.date);
   if (!date) throw new Error('주문 날짜가 없습니다.');
   if (!String(t.store || '').trim() && !Number(t.expense) && !Number(t.income)) {
     throw new Error('빈 주문(상호 및 금액 없음)은 저장할 수 없습니다.');
   }
   const orderId = t.firebaseOrderId || newOrderId();
-  const updates: Record<string, OrderRecord | null> = {};
-  if (t.firebaseOrderId && t.firebaseDate && t.firebaseDate !== date) {
-    updates[`orders/${t.firebaseDate}/${orderId}`] = null;
+  const updates: OrderUpdates = {};
+  const moved = !!(t.firebaseOrderId && t.firebaseDate && t.firebaseDate !== date);
+  const record = encodeOrder({ ...t, date });
+
+  if (moved) updates[`orders/${t.firebaseDate}/${orderId}`] = null;
+
+  if (!moved && t.firebaseOrderId && previous && previous.firebaseOrderId === t.firebaseOrderId) {
+    const before = encodeOrder({ ...previous, date: normalizeDate(previous.date), orderAt: previous.orderAt || record.orderAt }) as unknown as Record<string, unknown>;
+    const after = record as unknown as Record<string, unknown>;
+    const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
+      k => k !== 'updatedAt' && JSON.stringify(before[k]) !== JSON.stringify(after[k]),
+    );
+    for (const k of changed) updates[`orders/${date}/${orderId}/${k}`] = after[k] ?? null;
+    if (changed.length > 0) updates[`orders/${date}/${orderId}/updatedAt`] = record.updatedAt;
+  } else {
+    updates[`orders/${date}/${orderId}`] = record;
   }
-  updates[`orders/${date}/${orderId}`] = encodeOrder({ ...t, date });
+
   const tx: Transaction = {
     ...t,
     date,
@@ -166,11 +186,11 @@ export function prepareForSave(t: Transaction): { tx: Transaction; updates: Reco
   return { tx, updates };
 }
 
-export async function saveOrders(list: Transaction[]): Promise<Transaction[]> {
+export async function saveOrders(list: Transaction[], previous: Map<string, Transaction> = new Map()): Promise<Transaction[]> {
   const saved: Transaction[] = [];
-  const updates: Record<string, OrderRecord | null> = {};
+  const updates: OrderUpdates = {};
   for (const t of list) {
-    const prepared = prepareForSave(t);
+    const prepared = prepareForSave(t, t.id ? previous.get(t.id) : undefined);
     saved.push(prepared.tx);
     Object.assign(updates, prepared.updates);
   }

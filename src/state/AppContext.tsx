@@ -99,7 +99,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   userRef.current = user;
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
+  // 마지막으로 서버에서 받은 주문 (부분 저장 비교 기준)
+  const serverOrdersRef = useRef<Transaction[]>([]);
   const ordersLoaded = useRef(false);
+  // 대표거래처는 배열 전체를 한 번에 저장하므로, 서버 값을 받기 전(캐시 상태)에 저장하면 다른 사람의 변경을 덮어쓴다
+  const rulesLoaded = useRef(IS_DEMO);
 
   const notify = useCallback((text: string, tone: Toast['tone'] = 'info') => {
     const id = Date.now() + Math.random();
@@ -174,11 +178,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (added.length > 0) announceNewOrders(added, notify);
       }
       setOrders(clean);
+      serverOrdersRef.current = clean;
       ordersLoaded.current = true;
       cache.saveCachedOrders(clean);
     }, logError('주문'));
 
     const unsubRules = subscribeGroupRules(list => {
+      rulesLoaded.current = true;
       setRules(list);
       cache.saveCachedRules(list);
     }, logError('대표거래처'));
@@ -215,7 +221,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const saveOrders = useCallback(async (list: Transaction[]) => {
     if (list.length === 0) return [];
-    const saved = await saveOrdersRemote(list);
+    // 화면에 있던 직전 값과 비교해 바뀐 필드만 저장 (patchOrderLocal 로 먼저 바뀐 값은 제외하기 위해 서버 기준 값을 쓴다)
+    const previous = new Map(serverOrdersRef.current.map(t => [t.id, t]));
+    const saved = await saveOrdersRemote(list, previous);
     const oldIds = new Set(list.map(o => o.id).filter(Boolean));
     setOrders(prev => upsert(prev.filter(t => !oldIds.has(t.id)), saved));
     if (!navigator.onLine) notify('오프라인 상태입니다. 연결되면 자동으로 저장됩니다.');
@@ -231,6 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const replaceOrdersLocal = useCallback((list: Transaction[]) => setOrders(tidy(list)), []);
 
   const saveRules = useCallback(async (next: GroupRule[]) => {
+    if (!rulesLoaded.current) throw new Error('아직 서버에서 대표거래처 목록을 받지 못했습니다. 잠시 후 다시 시도해주세요.');
     setRules(next);
     cache.saveCachedRules(next);
     await saveGroupRules(next);

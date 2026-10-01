@@ -64,9 +64,10 @@ const findUser = (users: User[], identifier: string) => {
 };
 
 /** 회원 정보 쓰기 권한을 위해 Firebase 이메일 로그인 상태를 만든다. 실패해도 조용히 넘어간다. */
-async function ensureFirebaseSession(email: string | undefined, password: string) {
-  if (!email || auth.currentUser?.email?.toLowerCase() === email.toLowerCase()) return;
-  await signInWithEmailAndPassword(auth, email, password).catch(() => undefined);
+async function ensureFirebaseSession(email: string | undefined, password: string): Promise<boolean> {
+  if (!email) return !!auth.currentUser;
+  if (auth.currentUser?.email?.toLowerCase() === email.toLowerCase()) return true;
+  return signInWithEmailAndPassword(auth, email, password).then(() => true, () => false);
 }
 
 /**
@@ -91,7 +92,10 @@ export async function signIn(identifier: string, password: string, knownUsers: U
 
   // 2) 저장된 비밀번호와 같으면 통과 (이메일이 있으면 Firebase 로그인 상태도 맞춰 둔다)
   if (user?.passwordHash && user.passwordHash === hash) {
-    await ensureFirebaseSession(user.email, password);
+    const ok = await ensureFirebaseSession(user.email, password);
+    if (!ok && denied) {
+      throw new Error('이 비밀번호로는 서버 접속(이메일 로그인)이 되지 않습니다. 로그인 화면의 \'비밀번호 찾기\'로 이메일 비밀번호를 다시 정해 주세요.');
+    }
     return user;
   }
 
@@ -157,23 +161,28 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
   const email = input.email.trim().toLowerCase();
   const username = userKey(input.username) || email.split('@')[0];
   if (existing.some(u => userKey(u.username) === username)) throw new Error('이미 사용 중인 아이디입니다.');
+  if (input.password.length < 6) throw new Error('비밀번호는 6자 이상이어야 합니다.');
 
-  let uid = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  // DB는 이메일 로그인 상태에서만 열리므로 이메일 계정이 없으면 가입시키지 않는다
+  let uid: string;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, input.password);
     uid = cred.user.uid;
     await updateProfile(cred.user, { displayName: input.name }).catch(() => undefined);
   } catch (e) {
-    const code = (e as { code?: string })?.code || '';
-    // 이메일 인증 기능이 꺼져 있는 프로젝트에서도 가입은 진행 (비밀번호 해시로 로그인)
-    if (code in AUTH_ERRORS && code !== 'auth/network-request-failed') throw new Error(authMessage(e, '회원가입에 실패했습니다.'));
+    throw new Error(authMessage(e, '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'));
   }
+
+  // 로그인된 상태에서 최신 회원 목록을 다시 읽어, 같은 아이디가 있으면 덮어쓰지 않고 뒤에 번호를 붙인다
+  const fresh = await fetchUsers().catch(() => existing);
+  let finalName = username;
+  for (let n = 2; fresh.some(u => userKey(u.username) === finalName); n++) finalName = `${username}${n}`;
 
   const isMerchant = input.role === 'merchant';
   const saved = await saveUser({
     uid,
     email,
-    username,
+    username: finalName,
     name: input.name.trim(),
     phone: input.phone.trim(),
     passwordHash: await sha256(input.password),
@@ -218,6 +227,25 @@ export async function changeOwnFirebasePassword(newPassword: string): Promise<vo
 
 export async function signOutFirebase(): Promise<void> {
   await signOut(auth).catch(() => undefined);
+}
+
+/**
+ * 관리자가 다른 사람의 이메일 로그인 계정을 만든다.
+ * 같은 Firebase 앱으로 만들면 지금 로그인한 관리자가 새 계정으로 바뀌어 버리므로 보조 앱 인스턴스를 쓴다.
+ */
+export async function createEmailAccountForOther(email: string, password: string): Promise<string> {
+  if (IS_DEMO) return `demo_${Date.now()}`;
+  const { initializeApp, deleteApp } = await import('firebase/app');
+  const { getAuth } = await import('firebase/auth');
+  const secondary = initializeApp(auth.app.options, `create-${Date.now()}`);
+  try {
+    const cred = await createUserWithEmailAndPassword(getAuth(secondary), email, password);
+    return cred.user.uid;
+  } catch (e) {
+    throw new Error(authMessage(e, '이메일 계정을 만들지 못했습니다.'));
+  } finally {
+    await deleteApp(secondary).catch(() => undefined);
+  }
 }
 
 /** 임시 비밀번호 발급: 영문 대문자+숫자 */

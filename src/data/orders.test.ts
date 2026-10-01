@@ -47,4 +47,21 @@ describe('RTDB 주문 저장 형식', () => {
     expect(updates['orders/2026-10-02/o1']).toBeTruthy();
     expect(tx.id).toBe('firebase_2026-10-02_o1');
   });
+
+  it('기존 주문을 고치면 바뀐 필드만 쓴다 (동시 수정 시 남의 변경을 덮어쓰지 않도록)', () => {
+    const before = {
+      id: 'firebase_2026-10-01_o1', firebaseOrderId: 'o1', firebaseDate: '2026-10-01', date: '2026-10-01', orderAt: '2026-10-01T01:00:00.000Z',
+      store: '상호A', market: 'APM', floor: '1', room: '2호', manager: '', region: '', expense: 0, income: 0, status: '',
+    };
+    const { updates } = prepareForSave({ ...before, expense: 15, status: '주문찾기', itemCount: 1 }, before);
+    expect(Object.keys(updates).sort()).toEqual([
+      'orders/2026-10-01/o1/updatedAt', 'orders/2026-10-01/o1/대납금', 'orders/2026-10-01/o1/수량', 'orders/2026-10-01/o1/완료여부',
+    ]);
+    expect(updates['orders/2026-10-01/o1/대납금']).toBe(15);
+    // 처리비고를 지우면 그 필드만 삭제
+    const withMemo = { ...before, processingRemark: '메모' };
+    expect(prepareForSave({ ...withMemo, processingRemark: '' }, withMemo).updates['orders/2026-10-01/o1/처리비고']).toBeNull();
+    // 바뀐 게 없으면 아무것도 쓰지 않음
+    expect(prepareForSave(before, before).updates).toEqual({});
+  });
 });
