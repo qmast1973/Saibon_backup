@@ -174,8 +174,8 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
       {/* 달력 (스와이프 월 이동은 오작동 방지를 위해 넣지 않음) */}
       <div className="flex flex-1 flex-col rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-4">
         <div className="mb-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 text-lg font-black sm:text-xl">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-0.5 text-base font-black sm:text-xl">
               <select value={year} onChange={e => setMonth(new Date(Number(e.target.value), mon, 1))} className="cursor-pointer rounded-lg bg-transparent px-1 outline-none hover:bg-gray-800" aria-label="연도">
                 {years.map(y => <option key={y} value={y} className="bg-gray-900">{y}년</option>)}
               </select>
@@ -183,7 +183,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
                 {Array.from({ length: 12 }, (_, i) => <option key={i} value={i} className="bg-gray-900">{pad(i + 1)}월</option>)}
               </select>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <Button size="sm" onClick={() => setMonth(new Date(year, mon - 1, 1))} aria-label="이전 달"><ChevronLeft className="h-4 w-4" /></Button>
               <Button size="sm" onClick={() => setMonth(new Date(year, mon + 1, 1))} aria-label="다음 달"><ChevronRight className="h-4 w-4" /></Button>
               <Button size="sm" tone="primary" onClick={goToday}>오늘</Button>
@@ -226,7 +226,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
                   <span className="text-[13px] font-black leading-none sm:text-[15px]">{d}</span>
                   {holiday && <span className="mt-0.5 max-w-[40px] truncate text-[9px] font-bold leading-none opacity-90 sm:max-w-[64px]" title={holiday}>{holiday}</span>}
                 </span>
-                {count > 0 && <span className="mt-4 rounded-md bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white sm:text-xs">{count}건</span>}
+                {count > 0 && <span className="mt-4 whitespace-nowrap rounded-md bg-indigo-600 px-1 py-0.5 text-[10px] font-bold text-white sm:px-1.5 sm:text-xs">{count}건</span>}
               </button>
             );
           })}

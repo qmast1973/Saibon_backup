@@ -11,6 +11,8 @@ body {
   color: #f3f4f6;
   font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   overscroll-behavior-y: none;
+  /* 안전장치: 어떤 요소도 페이지를 가로로 밀어내지 못하게 (AGENTS.md 화면 이탈 금지) */
+  overflow-x: clip;
 }
 
 input[type="number"]::-webkit-outer-spin-button,
