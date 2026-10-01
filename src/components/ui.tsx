@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
-import { Layers, Search, Store, X } from 'lucide-react';
+import { Eye, EyeOff, Layers, Search, Store, X } from 'lucide-react';
+import { hangulToQwerty } from '../domain/keyboard';
 import type { GroupRule } from '../types';
 import { getStoreSuggestions } from '../domain/groups';
 import { useApp } from '../state/AppContext';
@@ -112,6 +113,42 @@ export const Select = ({ className, ...rest }: SelectHTMLAttributes<HTMLSelectEl
 export const Textarea = ({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea rows={2} {...rest} className={cx(inputClass, 'resize-none', className)} />
 );
+
+/**
+ * 비밀번호 입력 (눈 아이콘으로 입력한 글자 확인).
+ * 한글 자판 상태로 쳐도 같은 자리의 영문으로 바꿔 넣는다 (예: ㅁㅇㅡㅑㅜ → admin). 글자를 몰래 지우지 않는다.
+ */
+export function PasswordInput({
+  value, onChange, placeholder, autoComplete = 'current-password', required,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; autoComplete?: string; required?: boolean }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        required={required}
+        autoComplete={autoComplete}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        value={value}
+        onChange={e => onChange(hangulToQwerty(e.target.value))}
+        placeholder={placeholder}
+        className={cx(inputClass, 'pr-11')}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setShow(!show)}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+        aria-label={show ? '비밀번호 숨기기' : '비밀번호 보기'}
+        title={show ? '비밀번호 숨기기' : '비밀번호 보기'}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 /** 천원 단위 금액 입력 ("15" → 15,000원) */
 export function MoneyInput({ value, onChange, placeholder = '0', autoFocus }: { value: string; onChange: (v: string) => void; placeholder?: string; autoFocus?: boolean }) {

@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { ArrowLeft, Eye, EyeOff, ShieldPlus } from 'lucide-react';
+import { ArrowLeft, ShieldPlus } from 'lucide-react';
 import type { UserRole } from '../types';
 import { sendPasswordReset, signIn, signUp } from '../data/users';
 import * as cache from '../data/localCache';
@@ -7,31 +7,11 @@ import { sanitizeLoginId } from '../domain/keyboard';
 import { uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { AdminCreateModal } from '../modals/AdminCreateModal';
-import { Button, Field, Input, Select, cx } from '../components/ui';
+import { Button, Field, Input, PasswordInput, Select, cx } from '../components/ui';
 import { Logo } from '../components/Logo';
 
 type Mode = 'login' | 'register' | 'reset';
 type Message = { text: string; error: boolean } | null;
-
-function PasswordInput({ value, onChange, placeholder, autoComplete }: { value: string; onChange: (v: string) => void; placeholder: string; autoComplete: string }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="relative">
-      <Input
-        type={show ? 'text' : 'password'}
-        required
-        autoComplete={autoComplete}
-        value={value}
-        onChange={e => onChange(e.target.value.replace(/[ㄱ-ㅎㅏ-ㅣ가-힣]/g, ''))}
-        placeholder={placeholder}
-        className="pr-10"
-      />
-      <button type="button" tabIndex={-1} onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400" aria-label="비밀번호 보기">
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-    </div>
-  );
-}
 
 function Notice({ message }: { message: Message }) {
   if (!message) return null;
@@ -176,7 +156,7 @@ export function AuthScreen() {
                 <Input required autoComplete="username" value={loginId} onChange={e => setLoginId(sanitizeLoginId(e.target.value))} placeholder="아이디를 입력하세요" />
               </Field>
               <Field label="비밀번호">
-                <PasswordInput value={password} onChange={setPassword} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
+                <PasswordInput required value={password} onChange={setPassword} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
               </Field>
               <div className="flex items-center justify-between text-xs text-gray-300">
                 <div className="flex gap-4">
@@ -258,10 +238,10 @@ export function AuthScreen() {
               )}
               <div className="grid grid-cols-2 gap-2">
                 <Field label="비밀번호 *">
-                  <PasswordInput value={reg.password} onChange={setRegField('password')} placeholder="6자 이상" autoComplete="new-password" />
+                  <PasswordInput required value={reg.password} onChange={setRegField('password')} placeholder="6자 이상" autoComplete="new-password" />
                 </Field>
                 <Field label="비밀번호 확인 *">
-                  <PasswordInput value={reg.password2} onChange={setRegField('password2')} placeholder="한 번 더" autoComplete="new-password" />
+                  <PasswordInput required value={reg.password2} onChange={setRegField('password2')} placeholder="한 번 더" autoComplete="new-password" />
                 </Field>
               </div>
               <Button type="submit" tone="primary" size="lg" disabled={busy} className="w-full">
