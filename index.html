@@ -1,36 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
-    
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <meta name=theme-color content=#4f46e5 />
-    <meta name=mobile-web-app-capable content=yes />
-    <meta name=apple-mobile-web-app-capable content=yes />
-    <meta name=apple-mobile-web-app-status-bar-style content=default />
-    <meta name=apple-mobile-web-app-title content=사입ON />
-    <link rel=apple-touch-icon href=apple-touch-icon.png />
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#312e81" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="사입ON" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="pwa-192x192.png" />
     <title>사입ON</title>
-    <meta name="description" content="사입ON - 일자별 사입 달력 & 거래처별 정산 및 회원관리 시스템" />
-    <meta property="og:title" content="사입ON" />
-    <meta property="og:description" content="사입ON - 일자별 사입 달력 & 거래처별 정산 및 회원관리 시스템" />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preload" as="image" href="https://firebasestorage.googleapis.com/v0/b/ildang-505711.firebasestorage.app/o/%EC%82%AC%EC%9E%85ON.png?alt=media&token=9aec0177-3023-4390-b1cb-b7d44a42aa97" />
-  
+    <meta name="description" content="사입ON - 일자별 사입 달력 & 거래처별 정산 및 회원관리" />
     <script>
-      window.deferredPWAInstallPrompt = null;
-      window.addEventListener('beforeinstallprompt', (e) => {
-        // e.preventDefault();
-        window.deferredPWAInstallPrompt = e;
+      // 설치 프롬프트는 앱이 뜨기 전에 발생할 수 있으므로 미리 잡아 둔다
+      window.__pwaPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__pwaPrompt = e;
+        window.dispatchEvent(new Event('pwa-prompt-ready'));
       });
     </script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

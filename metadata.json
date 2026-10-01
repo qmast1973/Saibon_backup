@@ -1,8 +1,0 @@
-{
-  "name": "사입ON",
-  "description": "Firebase Authentication(이메일/비밀번호 회원가입, 로그인, 비밀번호 재설정) 및 실시간 데이터베이스 연동 도매 사입 정산 시스템",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

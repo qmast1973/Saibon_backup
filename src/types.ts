@@ -1,91 +1,72 @@
 export type UserRole = 'merchant' | 'local' | 'buyer' | 'admin';
 
 export interface User {
-  uid?: string; // Firebase Auth UID
-  email?: string; // User email for Firebase Authentication
-  username: string; // unique lowercase key in firebase `users/{username}`
+  username: string; // 소문자 고유키 (RTDB users/{username})
   name: string;
-  phone?: string;
-  passwordHash?: string;
   role: UserRole;
   approved: boolean;
-  isBuyerAdmin?: boolean; // NEW: true if buyer has admin privileges
-  storeName?: string; // For merchant
-  isMonthlyPurchase?: boolean; // For merchant (월 고정 사입 여부)
-  monthlyPurchaseAmount?: number; // For merchant (월 사입비 금액)
-
-  address?: string; // For merchant delivery address
-  businessNumber?: string;
-  assignedRegion?: string; // For local manager (e.g. 합성동)
-  allowedMarkets?: string[]; // For buyer (e.g. 디오트, APM, etc.)
-  assignedMerchants?: string[]; // For local manager (usernames of merchants)
+  uid?: string;
+  email?: string;
+  phone?: string;
+  passwordHash?: string;
+  isBuyerAdmin?: boolean; // 사입삼촌 중 서브관리자
+  storeName?: string; // 상인
+  businessNumber?: string; // 상인
+  address?: string; // 상인
+  isMonthlyPurchase?: boolean; // 상인: 월 고정 사입 (사입비 청구 제외)
+  monthlyPurchaseAmount?: number;
+  assignedRegion?: string; // 지방삼촌
+  assignedMerchants?: string[]; // 지방삼촌: 담당 상인 username
+  allowedMarkets?: string[]; // 사입삼촌: 담당 건물
   createdAt?: string;
   createdBy?: string;
   updatedAt?: string;
 }
 
+/** 주문 · 입금 · 미수금 한 줄. 금액 단위는 천원. */
 export interface Transaction {
   id: string;
   firebaseOrderId?: string;
   firebaseDate?: string;
-  importedFromFirebase?: boolean;
-  importedFromExcel?: boolean;
-  excelRowNumber?: number;
-  orderAt?: string | null;
-  businessDate?: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (영업일 기준)
+  store: string; // 소매 상호
+  market: string; // 건물명 (또는 '입금' / '미수금')
+  floor: string;
+  room: string;
+  manager: string; // 담당
+  region: string;
+  expense: number; // 대납금 (입금 건은 음수일 수 있음)
+  income: number; // 입금액
+  itemCount?: number;
+  isReturn?: boolean;
+  status?: string; // '' = 처리 대기
+  remark?: string; // 주문 내용
+  processingRemark?: string; // 사입삼촌 처리 비고
+  isFeeExcluded?: boolean; // 수금화면: 사입비 강제 제외
+  isFeeIncluded?: boolean; // 수금화면: 사입비 강제 포함
+  recordType?: 'order' | 'receivable';
+  localManager?: string;
+  actualManager?: string;
+  assignedManager?: string;
   merchantId?: string;
   merchantName?: string;
   merchantStoreName?: string;
-  manager: string; // e.g. 강군, 인혁, 영복, 준우, 윤승호
-  originalManager?: string;
-  sourceManager?: string;
-  actualManager?: string;
-  localManager?: string;
-  assignedManager?: string;
-  claimedBy?: string;
-  claimedAt?: string;
-  importedManagerRole?: string;
-  region: string; // e.g. 합성동
-  store: string; // e.g. 초록밀크, 리썸
-  market: string; // e.g. 남대, 디오트, APM, 더블유, 미수금, 입금
-  floor: string; // e.g. 1, 2, 지1, 원
-  room: string; // e.g. 16, 221
-  expense: number; // 대납금 (천원 단위 또는 원 단위 정규화)
-  income: number; // 입금액
-  itemCount?: number; // 물건 갯수
-  isReturn?: boolean;
-  status?: string; // e.g. 미송, 반품, 교환, 찾기, 주고옴, 매입처리, 완료, etc.
-  isFeeExcluded?: boolean; // 수금화면에서 사입비(수수료) 부과 대상에서 제외할 경우 true (미처리 전환)
-  isFeeIncluded?: boolean; // 수금화면에서 사입비(수수료) 부과 대상으로 강제 포함할 경우 true (완료 처리)
-  remark?: string; // 비고 (주문 품목 및 수량 등)
-  processingRemark?: string; // 처리 비고 (삼촌 입력란)
-  recordType?: 'order' | 'receivable';
+  orderAt?: string | null;
   createdAt?: string;
 }
 
-export interface CollectionRecord {
-  id: string;
-  store: string;
-  localManager?: string;
-  date: string;
-  amount: number;
-  method?: string;
-  note?: string;
-  createdAt: string;
-}
-
-export interface CollectionGroupRule {
+/** 종속 거래처(storeName) → 대표 거래처(groupName) 묶음 규칙 */
+export interface GroupRule {
   id: string;
   storeName: string;
   groupName: string;
   matchType: 'exact' | 'prefix';
-  effectiveFrom: string; // YYYY-MM-DD
+  effectiveFrom: string;
   systemDefault?: boolean;
   createdAt?: string;
-  note?: string; // 비고 및 특이사항
-  isMonthlyPurchase?: boolean; // 월사입 여부
-  monthlyPurchaseAmount?: number; // 월 사입비 금액
+  note?: string;
+  isMonthlyPurchase?: boolean;
+  monthlyPurchaseAmount?: number;
 }
 
 export interface BoardComment {
@@ -102,6 +83,6 @@ export interface BoardPost {
   content: string;
   authorName: string;
   authorUsername: string;
-  createdAt: string; // ISO date string
-  comments?: Record<string, Omit<BoardComment, 'id'>>;
+  createdAt: string;
+  comments: BoardComment[];
 }
