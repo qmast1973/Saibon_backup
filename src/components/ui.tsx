@@ -42,6 +42,37 @@ export function Button({
   );
 }
 
+/**
+ * 파일 고르기 버튼. 숨긴 input 을 코드로 click() 하면 일부 휴대폰 브라우저 · 미리보기 화면에서 막히므로
+ * label 안에 input 을 넣어 사용자가 직접 누르는 방식으로 연다.
+ */
+export function FileButton({
+  accept, onFile, disabled, tone = 'secondary', children,
+}: { accept: string; onFile: (file: File) => void; disabled?: boolean; tone?: Tone; children: ReactNode }) {
+  return (
+    <label
+      className={cx(
+        'relative inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition focus-within:ring-2 focus-within:ring-indigo-400',
+        TONES[tone],
+        disabled && 'pointer-events-none opacity-40',
+      )}
+    >
+      {children}
+      <input
+        type="file"
+        accept={accept}
+        disabled={disabled}
+        className="absolute h-px w-px overflow-hidden opacity-0"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onFile(file);
+        }}
+      />
+    </label>
+  );
+}
+
 /** 모달/화면 우측 상단 전용 닫기 버튼 (다른 버튼과 섞이지 않게 항상 단독 배치) */
 export function CloseButton({ onClick, label = '닫기' }: { onClick: () => void; label?: string }) {
   return (

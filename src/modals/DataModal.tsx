@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Database, Download, FileSpreadsheet, Layers, Upload } from 'lucide-react';
 import type { GroupRule, Transaction } from '../types';
 import type { Nav } from '../App';
@@ -12,7 +12,8 @@ import { toDateStr } from '../domain/dates';
 import { exportLedger, readLedgerExcel, type ExcelRow } from '../domain/excel';
 import { dedupeTransactions } from '../domain/ledger';
 import { useApp } from '../state/AppContext';
-import { Button, ConfirmDialog, Modal } from '../components/ui';
+import { Button, ConfirmDialog, FileButton, Modal } from '../components/ui';
+import { IS_DEMO } from '../data/firebase';
 import { ExcelImportModal } from './ExcelImportModal';
 
 const BACKUP_FORMAT = 'SAIPON_FULL_BACKUP';
@@ -42,8 +43,8 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
   const [busy, setBusy] = useState('');
   const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => Promise<void> } | null>(null);
   const [excelRows, setExcelRows] = useState<ExcelRow[] | null>(null);
-  const excelInput = useRef<HTMLInputElement>(null);
-  const restoreInput = useRef<HTMLInputElement>(null);
+  // 미리보기(데모)는 서버에 접속하지 않으므로 화면에 있는 주문으로 대신한다
+  const loadAll = () => (IS_DEMO ? Promise.resolve({ orders, empties: [] }) : fetchAllOrders());
 
   const task = async (label: string, fn: () => Promise<void>) => {
     setBusy(label);
@@ -56,8 +57,7 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
     }
   };
 
-  const onExcelFile = (file?: File) =>
-    file &&
+  const onExcelFile = (file: File) =>
     task('엑셀 읽기', async () => {
       const rows = await readLedgerExcel(file, nav.date);
       if (rows.length === 0) throw new Error('가져올 데이터 행이 없습니다. 열 제목(날짜, 상호, 건물, 층, 호수, 대납 등)을 확인해주세요.');
@@ -66,14 +66,14 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
 
   const exportExcel = () =>
     task('엑셀 내보내기', async () => {
-      const { orders: all } = await fetchAllOrders().catch(() => ({ orders }));
+      const { orders: all } = await loadAll().catch(() => ({ orders }));
       if (all.length === 0) throw new Error('내보낼 데이터가 없습니다.');
       await exportLedger(all);
     });
 
   const backup = () =>
     task('백업', async () => {
-      const { orders: all } = await fetchAllOrders();
+      const { orders: all } = await loadAll();
       const payload = {
         format: BACKUP_FORMAT,
         version: 3,
@@ -87,8 +87,7 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
       notify(`주문 ${all.length}건, 대표거래처 ${rules.length}건을 백업했습니다.`, 'success');
     });
 
-  const onRestoreFile = (file?: File) =>
-    file &&
+  const onRestoreFile = (file: File) =>
     task('복원 파일 읽기', async () => {
       const payload = JSON.parse(await file.text());
       const list: Transaction[] = payload.orders || payload.transactions;
@@ -108,7 +107,7 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
 
   const dedupe = () =>
     task('중복 정리', async () => {
-      const { orders: all, empties } = await fetchAllOrders();
+      const { orders: all, empties } = await loadAll();
       const { removed } = dedupeTransactions(all);
       const targets = [...removed, ...empties];
       if (targets.length === 0) {
@@ -154,15 +153,13 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
         {busy && <p className="rounded-xl bg-indigo-950 p-2.5 text-center text-xs font-bold text-indigo-200">{busy} 진행 중...</p>}
 
         <Section title="엑셀" description="엑셀 원장을 날짜 · 담당자 확인 후 가져오거나, 전체 장부를 엑셀로 내려받습니다.">
-          <Button tone="success" disabled={!!busy} onClick={() => excelInput.current?.click()}><FileSpreadsheet className="h-4 w-4" />엑셀 가져오기</Button>
+          <FileButton tone="success" disabled={!!busy} accept=".xlsx,.xls,.csv" onFile={onExcelFile}><FileSpreadsheet className="h-4 w-4" />엑셀 가져오기</FileButton>
           <Button disabled={!!busy} onClick={exportExcel}><Download className="h-4 w-4" />엑셀 내보내기</Button>
-          <input ref={excelInput} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => { onExcelFile(e.target.files?.[0]); e.target.value = ''; }} />
         </Section>
 
         <Section title="백업 · 복원" description="서버의 전체 주문(90일 이전 포함)과 대표거래처를 JSON 파일로 저장하고, 필요할 때 되돌립니다.">
           <Button tone="primary" disabled={!!busy} onClick={backup}><Download className="h-4 w-4" />백업 파일 받기</Button>
-          <Button disabled={!!busy} onClick={() => restoreInput.current?.click()}><Upload className="h-4 w-4" />백업에서 복원</Button>
-          <input ref={restoreInput} type="file" accept="application/json,.json" hidden onChange={e => { onRestoreFile(e.target.files?.[0]); e.target.value = ''; }} />
+          <FileButton disabled={!!busy} accept="application/json,.json" onFile={onRestoreFile}><Upload className="h-4 w-4" />백업에서 복원</FileButton>
         </Section>
 
         <Section title="중복 정리" description="엑셀을 여러 번 올리는 등으로 완전히 같은 주문이 여러 개 생긴 경우, 1건만 남기고 정리합니다.">
