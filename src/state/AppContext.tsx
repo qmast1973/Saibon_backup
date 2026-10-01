@@ -4,7 +4,9 @@ import * as cache from '../data/localCache';
 import { deleteOrder as deleteOrderRemote, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
 import { saveGroupRules, subscribeGroupRules } from '../data/groupRules';
 import { fetchMarkets } from '../data/settings';
-import { saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
+import { isPermissionDenied, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, IS_DEMO } from '../data/firebase';
 import { filterVisible, isRelevantForBuyer } from '../domain/access';
 import { normalizeDate } from '../domain/dates';
 import { normalizeMarket } from '../domain/markets';
@@ -17,6 +19,8 @@ export interface Toast {
 
 interface AppState {
   ready: boolean;
+  /** 회원 목록 읽기 상태: 아직 모름 / 읽음 / 서버가 거부(이메일 로그인 필요) */
+  usersAccess: 'unknown' | 'ok' | 'denied';
   online: boolean;
   user: User | null;
   users: User[];
@@ -85,6 +89,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [markets, setMarkets] = useState<string[]>([]);
   const [includeFee, setIncludeFeeState] = useState(cache.getIncludeFee);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [usersAccess, setUsersAccess] = useState<AppState['usersAccess']>('unknown');
+  // Firebase 로그인 상태가 바뀌면(로그인/로그아웃) 실시간 동기화를 다시 연결한다
+  // null = 아직 확인 전 (저장된 로그인 세션을 불러오기 전에 접속하면 권한 거부가 나므로 기다린다)
+  const [authKey, setAuthKey] = useState<string | null>(IS_DEMO ? '' : null);
+  useEffect(() => (IS_DEMO ? undefined : onAuthStateChanged(auth, u => setAuthKey(u?.uid || ''))), []);
 
   const userRef = useRef(user);
   userRef.current = user;
@@ -125,9 +134,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 실시간 동기화
   useEffect(() => {
-    const logError = (what: string) => (e: Error) => console.warn(`${what} 동기화 오류:`, e);
+    const logError = (what: string) => (e: Error) => {
+      console.warn(`${what} 동기화 오류:`, e);
+      if (!isPermissionDenied(e)) return;
+      if (what === '회원') setUsersAccess('denied');
+      // 로그인한 상태인데 서버가 거부하면 이메일 로그인 세션이 없는 것: 다시 로그인하게 한다
+      if (userRef.current && what === '주문') {
+        notify('서버 접속 권한이 만료되었습니다. 다시 로그인해 주세요.', 'error');
+        cache.clearSession();
+        setUser(null);
+      }
+    };
 
+    if (authKey === null) return;
     const unsubUsers = subscribeUsers(list => {
+      setUsersAccess('ok');
       if (list.length === 0) return;
       setUsers(list);
       cache.saveCachedUsers(list);
@@ -167,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubOrders();
       unsubRules();
     };
-  }, [notify]);
+  }, [notify, authKey]);
 
   // 사입삼촌: 브라우저 알림 권한 요청
   useEffect(() => {
@@ -234,7 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const visibleOrders = useMemo(() => (user ? filterVisible(orders, user, users, rules) : []), [orders, user, users, rules]);
 
   const value: AppState = {
-    ready, online, user, users, orders, visibleOrders, rules, markets, includeFee, toasts,
+    ready, usersAccess, online, user, users, orders, visibleOrders, rules, markets, includeFee, toasts,
     login, logout, setIncludeFee, setMarkets, notify, dismissToast,
     saveOrders, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, removeUserLocal,
   };

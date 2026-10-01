@@ -23,7 +23,7 @@ function Notice({ message }: { message: Message }) {
 }
 
 export function AuthScreen() {
-  const { users, orders, login } = useApp();
+  const { users, orders, login, usersAccess } = useApp();
   const [mode, setMode] = useState<Mode>('login');
   const [message, setMessage] = useState<Message>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,8 @@ export function AuthScreen() {
   const [resetEmail, setResetEmail] = useState('');
 
   const regions = useMemo(() => uniqueSorted(['합성동', ...orders.map(o => o.region)]), [orders]);
-  const hasAdmin = users.some(u => u.role === 'admin');
+  // 서버에서 회원 목록을 실제로 읽었고 관리자가 없을 때만 '최초 관리자' 버튼을 보인다
+  const canCreateFirstAdmin = usersAccess === 'ok' && !users.some(u => u.role === 'admin');
 
   const switchMode = (m: Mode) => {
     setMode(m);
@@ -152,7 +153,7 @@ export function AuthScreen() {
 
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
-              <Field label="아이디 (또는 이메일)">
+              <Field label="아이디 (또는 이메일)" hint="이 기기에서 처음 로그인하면 가입할 때 쓴 이메일 주소로 로그인해 주세요.">
                 <Input required autoComplete="username" value={loginId} onChange={e => setLoginId(sanitizeLoginId(e.target.value))} placeholder="아이디를 입력하세요" />
               </Field>
               <Field label="비밀번호">
@@ -175,7 +176,7 @@ export function AuthScreen() {
                 {busy ? '확인 중...' : '로그인'}
               </Button>
               <Notice message={message} />
-              {!hasAdmin && (
+              {canCreateFirstAdmin && (
                 <button type="button" onClick={() => setShowAdminCreate(true)} className="flex w-full items-center justify-center gap-1.5 pt-2 text-xs font-bold text-gray-400 hover:text-gray-200">
                   <ShieldPlus className="h-4 w-4" /> 최초 관리자 계정 만들기
                 </button>

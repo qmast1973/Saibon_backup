@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { UserPen } from 'lucide-react';
 import type { UserRole } from '../types';
-import { ROLE_LABEL, sha256, userKey } from '../data/users';
+import { changeOwnFirebasePassword, ROLE_LABEL, sha256, userKey } from '../data/users';
 import { hasAdminAccess, isAdmin } from '../domain/access';
 import { MARKET_SEPARATOR_RE, NON_BUILDING_MARKETS, normalizeMarket } from '../domain/markets';
 import { uniqueSorted } from '../domain/text';
@@ -72,6 +72,8 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
 
     setSaving(true);
     try {
+      // 내 비밀번호를 바꾸면 이메일 로그인 비밀번호부터 바꾼다 (실패하면 저장하지 않음)
+      if (form.password && !editingOther) await changeOwnFirebasePassword(form.password);
       await saveUser({
         ...target,
         role,
