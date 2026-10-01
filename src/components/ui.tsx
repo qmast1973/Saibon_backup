@@ -43,33 +43,36 @@ export function Button({
 }
 
 /**
- * 파일 고르기 버튼. 숨긴 input 을 코드로 click() 하면 일부 휴대폰 브라우저 · 미리보기 화면에서 막히므로
- * label 안에 input 을 넣어 사용자가 직접 누르는 방식으로 연다.
+ * 파일 고르기 버튼.
+ * 투명한 파일 입력칸을 버튼 전체에 겹쳐서 손가락이 입력칸을 직접 누르게 한다.
+ * (숨긴 입력칸을 코드나 label 로 대신 여는 방식은 일부 휴대폰 · 앱 내부 브라우저 · 미리보기에서 막힌다)
  */
 export function FileButton({
   accept, onFile, disabled, tone = 'secondary', children,
 }: { accept: string; onFile: (file: File) => void; disabled?: boolean; tone?: Tone; children: ReactNode }) {
   return (
-    <label
+    <span
       className={cx(
-        'relative inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition focus-within:ring-2 focus-within:ring-indigo-400',
+        'relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-xl px-3.5 py-2 text-xs font-bold transition focus-within:ring-2 focus-within:ring-indigo-400',
         TONES[tone],
-        disabled && 'pointer-events-none opacity-40',
+        disabled && 'opacity-40',
       )}
     >
-      {children}
+      <span className="pointer-events-none inline-flex items-center gap-1.5">{children}</span>
       <input
         type="file"
         accept={accept}
         disabled={disabled}
-        className="absolute h-px w-px overflow-hidden opacity-0"
+        title=""
+        aria-label={typeof children === 'string' ? children : '파일 선택'}
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
         onChange={e => {
           const file = e.target.files?.[0];
           e.target.value = '';
           if (file) onFile(file);
         }}
       />
-    </label>
+    </span>
   );
 }
 

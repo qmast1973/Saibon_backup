@@ -153,7 +153,7 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
         {busy && <p className="rounded-xl bg-indigo-950 p-2.5 text-center text-xs font-bold text-indigo-200">{busy} 진행 중...</p>}
 
         <Section title="엑셀" description="엑셀 원장을 날짜 · 담당자 확인 후 가져오거나, 전체 장부를 엑셀로 내려받습니다.">
-          <FileButton tone="success" disabled={!!busy} accept=".xlsx,.xls,.csv" onFile={onExcelFile}><FileSpreadsheet className="h-4 w-4" />엑셀 가져오기</FileButton>
+          <FileButton tone="success" disabled={!!busy} accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" onFile={onExcelFile}><FileSpreadsheet className="h-4 w-4" />엑셀 가져오기</FileButton>
           <Button disabled={!!busy} onClick={exportExcel}><Download className="h-4 w-4" />엑셀 내보내기</Button>
         </Section>
 
