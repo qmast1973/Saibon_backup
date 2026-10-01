@@ -109,6 +109,39 @@ export const saveCachedUsers = (users: User[]) => writeJson(localStorage, KEYS.u
 export const loadCachedRules = () => readJson<GroupRule[]>(localStorage, KEYS.rules) || [];
 export const saveCachedRules = (rules: GroupRule[]) => writeJson(localStorage, KEYS.rules, rules);
 
+/**
+ * 원래 사입온 앱이 이 기기에 저장해 둔 회원 목록 (같은 주소라 읽을 수 있다).
+ * 서버가 회원 목록을 안 보여 줄 때 원래 앱처럼 이 저장본으로 아이디 · 비밀번호를 확인한다.
+ * DB가 없으면 새로 만들지 않는다.
+ */
+export function loadLegacyUsers(): Promise<User[]> {
+  return new Promise(resolve => {
+    try {
+      const req = indexedDB.open('WholesaleLedgerAuthDB');
+      req.onupgradeneeded = () => req.transaction?.abort(); // 없던 DB면 만들지 않고 취소
+      req.onerror = () => resolve([]);
+      req.onsuccess = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('users')) {
+          db.close();
+          return resolve([]);
+        }
+        const get = db.transaction('users', 'readonly').objectStore('users').getAll();
+        get.onsuccess = () => {
+          db.close();
+          resolve(((get.result || []) as User[]).filter(u => u && u.username && !String(u.uid || '').startsWith('seed_')));
+        };
+        get.onerror = () => {
+          db.close();
+          resolve([]);
+        };
+      };
+    } catch {
+      resolve([]);
+    }
+  });
+}
+
 // ----- 주문 캐시 (IndexedDB: 데이터가 커서 localStorage 대신 사용) -----
 
 const DB_NAME = 'saipon-cache';

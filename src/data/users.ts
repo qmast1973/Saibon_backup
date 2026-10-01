@@ -2,6 +2,7 @@ import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmail
 import { get, onValue, ref, remove, set } from 'firebase/database';
 import type { User, UserRole } from '../types';
 import { auth, IS_DEMO, rtdb, withTimeout, write } from './firebase';
+import { loadLegacyUsers } from './localCache';
 
 /** RTDB users/{username} */
 export const userKey = (username: string) => String(username || '').trim().toLowerCase();
@@ -87,15 +88,16 @@ export async function signIn(identifier: string, password: string, knownUsers: U
     users = await fetchUsers();
   } catch (e) {
     denied = isPermissionDenied(e);
+    // 서버가 회원 목록을 안 보여 주면 이 기기에 저장된 목록(새 앱 + 원래 앱)으로 확인한다 (원래 앱과 같은 방식)
+    const legacy = await loadLegacyUsers();
+    users = [...knownUsers, ...legacy.filter(l => !knownUsers.some(k => userKey(k.username) === userKey(l.username)))];
   }
   let user = findUser(users, identifier);
 
   // 2) 저장된 비밀번호와 같으면 통과 (이메일이 있으면 Firebase 로그인 상태도 맞춰 둔다)
   if (user?.passwordHash && user.passwordHash === hash) {
-    const ok = await ensureFirebaseSession(user.email, password);
-    if (!ok && denied) {
-      throw new Error('이 비밀번호로는 서버 접속(이메일 로그인)이 되지 않습니다. 로그인 화면의 \'비밀번호 찾기\'로 이메일 비밀번호를 다시 정해 주세요.');
-    }
+    // 이메일 로그인 상태도 맞춰 둔다 (실패해도 원래 앱처럼 로그인은 진행)
+    await ensureFirebaseSession(user.email, password);
     return user;
   }
 
