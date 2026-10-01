@@ -1,4 +1,4 @@
-import { Calculator, HandCoins, LogOut, MessageSquare, Settings, Store, WifiOff } from 'lucide-react';
+import { BarChart3, Calculator, HandCoins, LogOut, MessageSquare, Settings, Store, WifiOff } from 'lucide-react';
 import type { Nav } from '../App';
 import { describeUser } from '../data/users';
 import { isBuyerLike } from '../domain/access';
@@ -47,6 +47,11 @@ export function Header({ nav }: { nav: Nav }) {
             {isBuyerLike(user) && (
               <button type="button" onClick={() => nav.setView('workday')} className={cx(pill, 'bg-blue-600 hover:bg-blue-500')}>
                 <Calculator className="h-3.5 w-3.5" /> 주문처리
+              </button>
+            )}
+            {user.role === 'local' && (
+              <button type="button" onClick={() => nav.setView('stats')} className={cx(pill, 'bg-pink-700 hover:bg-pink-600')}>
+                <BarChart3 className="h-3.5 w-3.5" /> 갯수 집계
               </button>
             )}
             {user.role === 'local' && (

@@ -8,7 +8,7 @@ import { matchMarketToken, normalizeMarket } from './markets';
 import { composeRoomWithWholesale, parseOrderText } from './orderParser';
 import { buildStoreGroups } from './storeGroups';
 import { fuzzyIncludes, initials } from './text';
-import { filterVisible } from './access';
+import { canSeeItemCounts, filterVisible } from './access';
 import { hangulToQwerty } from './keyboard';
 
 const tx = (o: Partial<Transaction>): Transaction => ({
@@ -206,6 +206,10 @@ describe('중복', () => {
 });
 
 describe('역할별 조회', () => {
+  it('갯수 집계는 사입삼촌 · 관리자 · 지방삼촌', () => {
+    const u = (role: User['role']): User => ({ username: role, name: role, role, approved: true });
+    expect(['admin', 'buyer', 'local', 'merchant'].map(r => canSeeItemCounts(u(r as User['role'])))).toEqual([true, true, true, false]);
+  });
   const orders = [tx({ market: '디오트', store: '상호A' }), tx({ market: 'APM', store: '상호B', merchantId: 'm2' })];
   it('사입삼촌은 담당 건물만', () => {
     const buyer: User = { username: 'b', name: 'b', role: 'buyer', approved: true, allowedMarkets: ['디오'] };
@@ -215,5 +219,11 @@ describe('역할별 조회', () => {
     const local: User = { username: 'l', name: 'l', role: 'local', approved: true, assignedMerchants: ['m1'] };
     const users: User[] = [{ username: 'm1', name: 'x', role: 'merchant', approved: true, storeName: '상호A' }];
     expect(filterVisible(orders, local, users, []).map(t => t.store)).toEqual(['상호A']);
+  });
+  it('지방삼촌은 담당 상인과 묶인 종속 상호 주문도 본다', () => {
+    const local: User = { username: 'l', name: 'l', role: 'local', approved: true, assignedMerchants: ['m1'] };
+    const users: User[] = [{ username: 'm1', name: 'x', role: 'merchant', approved: true, storeName: '대표A' }];
+    const list = [tx({ store: '대표A' }), tx({ store: '상호A-1' }), tx({ store: '기타' })];
+    expect(filterVisible(list, local, users, rules).map(t => t.store)).toEqual(['대표A', '상호A-1']);
   });
 });

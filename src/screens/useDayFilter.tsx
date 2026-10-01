@@ -3,6 +3,7 @@ import { Building2, Calendar, Layers } from 'lucide-react';
 import type { Transaction, User } from '../types';
 import { floorKey } from '../domain/format';
 import { matchesTransaction } from '../domain/groups';
+import { isOrder } from '../domain/ledger';
 import { normalizeMarket } from '../domain/markets';
 import { sortKo, uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
@@ -25,7 +26,8 @@ export function useDayFilter(date: string, user: User) {
   const [floor, setFloor] = useState('');
   const [query, setQuery] = useState('');
 
-  const dayOrders = useMemo(() => visibleOrders.filter(t => t.date === date), [visibleOrders, date]);
+  // 입금 · 미수금 기록은 물건이 아니므로 주문처리 · 갯수 집계에서 뺀다
+  const dayOrders = useMemo(() => visibleOrders.filter(t => t.date === date && isOrder(t)), [visibleOrders, date]);
 
   const buildings = useMemo(
     () => uniqueSorted([...dayOrders.map(t => normalizeMarket(t.market)), ...(user.allowedMarkets || []).map(m => normalizeMarket(m))]),

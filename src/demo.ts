@@ -28,7 +28,9 @@ export async function seedDemo() {
   ];
   try {
     localStorage.setItem('saipon.autoLogin', 'true');
-    localStorage.setItem('saipon.session.v2', JSON.stringify({ user: users[0], loginAt: Date.now() }));
+    // 링크 끝에 #buyer / #local / #merchant 를 붙이면 그 역할로 시작 (기본: 관리자)
+    const as = { buyer: users[1], local: users[2], merchant: users[3] }[location.hash.slice(1)] || users[0];
+    localStorage.setItem('saipon.session.v2', JSON.stringify({ user: as, loginAt: Date.now() }));
     localStorage.setItem('saipon.users.v2', JSON.stringify(users));
     localStorage.setItem('saipon.rules.v2', JSON.stringify(rules));
   } catch { /* noop */ }

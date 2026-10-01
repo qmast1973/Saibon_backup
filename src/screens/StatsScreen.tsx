@@ -49,7 +49,7 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     <Screen
       title="갯수 집계"
       badge={<Badge className="bg-pink-900/60 text-pink-200">{user!.name}</Badge>}
-      subtitle="처리 상태별 건수와 거래처별 물건 갯수를 확인합니다. 카드를 누르면 목록이 걸러집니다."
+      subtitle={user!.role === 'local' ? '받은 물건을 거래처별 갯수와 맞춰 보며 분류하세요. 담당 거래처 주문만 보입니다.' : '처리 상태별 건수와 거래처별 물건 갯수를 확인합니다. 카드를 누르면 목록이 걸러집니다.'}
       onClose={() => nav.setView(null)}
       actions={<Button tone="success" onClick={() => exportWorkday(list, nav.date, user!.name)} disabled={list.length === 0}><Download className="h-4 w-4" />엑셀 저장</Button>}
     >

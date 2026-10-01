@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { BarChart3, CalendarCheck, CheckCircle2, ChevronLeft, ChevronRight, Layers, Pencil, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import type { Transaction } from '../types';
 import type { Nav } from '../App';
-import { isBuyerLike } from '../domain/access';
+import { canSeeItemCounts } from '../domain/access';
 import { getBusinessDate, getKoreanHolidays } from '../domain/dates';
 import { formatLocation, formatMoney } from '../domain/format';
 import { getBillingStore, getMerchantBundle, getSubStores, matchesTransaction, sortByStoreFocus } from '../domain/groups';
@@ -192,7 +192,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
           <div className="flex flex-wrap justify-end gap-1.5">
             <Button size="sm" tone="primary" onClick={() => nav.open({ type: 'quick' })}><Sparkles className="h-3.5 w-3.5" />빠른주문</Button>
             <Button size="sm" onClick={nav.newOrder}><Plus className="h-3.5 w-3.5" />{isMerchant ? '주문 추가' : '신규 입력'}</Button>
-            {isBuyerLike(user) && (
+            {canSeeItemCounts(user) && (
               <Button size="sm" className="border-pink-800 bg-pink-950 text-pink-200 hover:bg-pink-900" onClick={() => nav.setView('stats')}>
                 <BarChart3 className="h-3.5 w-3.5" />갯수 집계
               </Button>

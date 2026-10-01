@@ -7,6 +7,8 @@ export const isSubAdmin = (u: User | null | undefined) => u?.role === 'buyer' &&
 /** 관리자 또는 서브관리자(사입) */
 export const hasAdminAccess = (u: User | null | undefined) => isAdmin(u) || isSubAdmin(u);
 export const isBuyerLike = (u: User | null | undefined) => u?.role === 'buyer' || u?.role === 'admin';
+/** 갯수 집계: 사입삼촌 · 관리자 + 물건을 받아 분류하는 지방삼촌 (지방삼촌은 담당 거래처 주문만 보인다) */
+export const canSeeItemCounts = (u: User | null | undefined) => isBuyerLike(u) || u?.role === 'local';
 
 /**
  * 역할별로 볼 수 있는 주문만 남긴다.
@@ -26,9 +28,10 @@ export function filterVisible(all: Transaction[], user: User, users: User[], rul
   }
 
   if (user.role === 'local') {
+    // 담당 상인의 주문 + 그 상인과 대표거래처로 묶인 상호의 주문 (받은 물건을 거래처별로 분류해야 하므로)
     const assigned = new Set(user.assignedMerchants || []);
-    const stores = new Set(users.filter(u => assigned.has(u.username) && u.storeName).map(u => u.storeName!.trim()));
-    return all.filter(t => assigned.has(t.merchantId || '') || stores.has(String(t.store || '').trim()));
+    const merchants = users.filter(u => u.role === 'merchant' && assigned.has(u.username));
+    return all.filter(t => assigned.has(t.merchantId || '') || merchants.some(m => belongsToMerchant(t, m, rules)));
   }
   return [];
 }
