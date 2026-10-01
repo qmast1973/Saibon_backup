@@ -23,6 +23,7 @@ export const firestore = getFirestore(app, FIRESTORE_DATABASE_ID);
 
 /** 네트워크가 끊겨도 화면이 멈추지 않도록 일정 시간 후 포기한다. */
 export function withTimeout<T>(promise: Promise<T>, ms: number, label = '요청'): Promise<T> {
+  if (import.meta.env.VITE_DEMO === '1') ms = 800;
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} 시간 초과`)), ms)),
