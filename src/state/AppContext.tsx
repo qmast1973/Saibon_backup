@@ -141,10 +141,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const logError = (what: string) => (e: Error) => {
       console.warn(`${what} 동기화 오류:`, e);
       if (!isPermissionDenied(e)) return;
-      if (what === '회원') setUsersAccess('denied');
+      if (what === '회원') {
+        setUsersAccess('denied');
+        // 회원 목록을 못 받으면 이 기기에 저장된 목록(원래 앱 저장본 포함)이라도 보여 준다
+        cache.loadLegacyUsers().then(legacy => legacy.length && setUsers(prev => (prev.length ? prev : legacy)));
+      }
       // 로그인한 상태인데 서버가 거부하면 이메일 로그인 세션이 없는 것: 다시 로그인하게 한다
       if (userRef.current && what === '주문') {
-        notify('서버 접속 권한이 만료되었습니다. 다시 로그인해 주세요.', 'error');
+        notify('서버가 주문 데이터를 보여 주지 않습니다 (권한 거부).\n가입한 이메일 주소로 다시 로그인해 보세요. 그래도 안 되면 DB 규칙을 확인해야 합니다.', 'error');
         cache.clearSession();
         setUser(null);
       }
