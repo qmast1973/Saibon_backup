@@ -169,6 +169,23 @@ describe('정산', () => {
     expect(applyStatus(tx({ status: '샘플' }), '샘플', '삼촌').status).toBe('');
     expect(applyStatus(tx({}), '주문없음', '삼촌').itemCount).toBe(0);
   });
+  it('물건 갯수 규칙: 1 버튼은 입력값 유지, 0 버튼은 무조건 0, 직접 입력은 그대로', () => {
+    for (const s of ['주문찾기', '미송(찾기)', '샘플', '교환', '반송']) {
+      expect(applyStatus(tx({}), s, '삼촌').itemCount).toBe(1);
+      expect(applyStatus(tx({ itemCount: 2 }), s, '삼촌').itemCount).toBe(2);
+    }
+    for (const s of ['올미송(결제만)', '반품만', '매입처리', '주문없음', '물건없음']) {
+      expect(applyStatus(tx({ itemCount: 1 }), s, '삼촌').itemCount).toBe(0);
+    }
+    // 주문찾기(1) → 올미송으로 바꾸면 0
+    const found = applyStatus(tx({}), '주문찾기', '삼촌');
+    expect(applyStatus(found, '올미송(결제만)', '삼촌').itemCount).toBe(0);
+    // 올미송 누른 뒤 직접 2 입력 → 2 그대로 (상태 버튼을 다시 누르지 않는 한 유지)
+    const typed = { ...applyStatus(tx({}), '올미송(결제만)', '삼촌'), itemCount: 2 };
+    expect(typed.itemCount).toBe(2);
+    // 같은 버튼 다시 눌러 처리 대기로 되돌려도 갯수는 유지
+    expect(applyStatus(typed, '올미송(결제만)', '삼촌')).toMatchObject({ status: '', itemCount: 2 });
+  });
 });
 
 describe('중복', () => {

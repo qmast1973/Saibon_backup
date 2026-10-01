@@ -123,14 +123,22 @@ export function statusGroup(status: string | undefined): StatusGroup | null {
 }
 
 /**
- * 상태를 바꿀 때 물건 갯수 / 반품 여부 기본값 규칙.
- * 같은 상태를 다시 누르면 처리 대기('')로 되돌린다.
+ * 상태 버튼을 누를 때 물건 갯수 기본값 (사장님이 정한 규칙)
+ *  - 1이 되는 버튼: 0이면 1, 이미 입력해 둔 숫자(2 등)는 그대로
+ *  - 0이 되는 버튼: 무조건 0
+ *  - 교환/매입: 무조건 1
+ * 버튼을 누른 뒤 갯수 칸에 직접 입력한 숫자는 그대로 저장된다.
  */
+export const COUNT_ONE_STATUSES = new Set(['주문찾기', '샘플', '미송(찾기)', '교환', '반송', '완료', '반품/교환']);
+export const COUNT_ZERO_STATUSES = new Set(['올미송(결제만)', '반품만', '매입처리', '주고옴', '주문없음', '물건없음']);
+
+/** 같은 상태를 다시 누르면 처리 대기('')로 되돌린다 (갯수는 그대로). */
 export function applyStatus(t: Transaction, nextStatus: string, managerName: string): Transaction {
   const status = t.status === nextStatus ? '' : nextStatus;
   let itemCount = Number(t.itemCount ?? 0) || 0;
   if (EXCHANGE_PURCHASE.has(status)) itemCount = 1;
-  else if (['주문찾기', '샘플', '미송(찾기)', '교환', '반송', '완료', '반품/교환'].includes(status) && itemCount === 0) itemCount = 1;
+  else if (COUNT_ZERO_STATUSES.has(status)) itemCount = 0;
+  else if (COUNT_ONE_STATUSES.has(status) && itemCount <= 0) itemCount = 1;
 
   const isReturn = RETURN_STATUSES.has(status) ? true : t.isReturn;
   return {
