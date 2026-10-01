@@ -15,10 +15,41 @@ const FILTERS = [
   { key: 'uncompleted', label: '처리 대기', tone: 'border-amber-700 bg-amber-950/60 text-amber-300', test: (t: Transaction) => !hasStatus(t) },
 ] as const;
 
-const GROUP_STYLE: Record<StatusGroup, { card: string; active: string }> = {
-  done: { card: 'border-green-800 bg-green-950/30', active: 'bg-green-600 border-green-400 text-white ring-2 ring-green-400' },
-  pending: { card: 'border-yellow-800 bg-yellow-950/30', active: 'bg-yellow-600 border-yellow-400 text-white ring-2 ring-yellow-400' },
-  return: { card: 'border-red-800 bg-red-950/30', active: 'bg-red-600 border-red-400 text-white ring-2 ring-red-400' },
+// 바쁘게 움직이며 한눈에 구분하도록 버튼 · 카드 색을 상태별로 다르게 둔다
+const GROUP_STYLE: Record<StatusGroup, { card: string; active: string; idle: string; badge: string }> = {
+  done: {
+    card: 'border-green-700 bg-green-950/40',
+    active: 'bg-green-600 border-green-400 text-white ring-2 ring-green-400',
+    idle: 'border-green-700 bg-green-950/60 text-green-300 hover:bg-green-900',
+    badge: 'bg-green-900 text-green-200',
+  },
+  pending: {
+    card: 'border-yellow-700 bg-yellow-950/40',
+    active: 'bg-yellow-500 border-yellow-300 text-gray-950 ring-2 ring-yellow-300',
+    idle: 'border-yellow-700 bg-yellow-950/60 text-yellow-300 hover:bg-yellow-900',
+    badge: 'bg-yellow-900 text-yellow-200',
+  },
+  return: {
+    card: 'border-red-700 bg-red-950/40',
+    active: 'bg-red-600 border-red-400 text-white ring-2 ring-red-400',
+    idle: 'border-red-700 bg-red-950/60 text-red-300 hover:bg-red-900',
+    badge: 'bg-red-900 text-red-200',
+  },
+};
+
+/** 세부 상태 버튼 색 (원래 앱과 같은 구분) */
+const OPTION_STYLE: Record<string, string> = {
+  주문찾기: 'bg-green-600 border-green-400 text-white',
+  샘플: 'bg-teal-600 border-teal-400 text-white',
+  주문없음: 'bg-slate-500 border-slate-300 text-white',
+  물건없음: 'bg-slate-600 border-slate-400 text-white',
+  '올미송(결제만)': 'bg-orange-600 border-orange-400 text-white',
+  '미송(찾기)': 'bg-yellow-500 border-yellow-300 text-gray-950',
+  교환: 'bg-blue-600 border-blue-400 text-white',
+  반품만: 'bg-rose-600 border-rose-400 text-white',
+  반송: 'bg-slate-600 border-slate-400 text-white',
+  '교환/매입': 'bg-fuchsia-600 border-fuchsia-400 text-white',
+  매입처리: 'bg-emerald-600 border-emerald-400 text-white',
 };
 
 /** 사입삼촌 주문처리: 건물·층 동선 순서로 주문을 보며 상태·대납금·갯수를 입력 */
@@ -102,7 +133,7 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
           {t.region && <Badge className="bg-violet-900/60 text-violet-200">{t.region}</Badge>}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <Badge className={hasStatus(t) ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-400'}>{hasStatus(t) ? `✓ ${t.status}` : '처리 대기'}</Badge>
+          <Badge className={group ? GROUP_STYLE[group].badge : 'bg-amber-950 text-amber-400'}>{hasStatus(t) ? `✓ ${t.status}` : '처리 대기'}</Badge>
           <Badge className="bg-gray-800 text-gray-300">담당: {t.actualManager || t.assignedManager || t.manager || '미배정'}</Badge>
         </div>
       </div>
@@ -158,7 +189,7 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
               const disabled = option === '매입처리' && !t.isReturn;
               return (
                 <button key={option} type="button" disabled={disabled} onClick={() => setStatus(option)}
-                  className="min-w-[64px] flex-1 rounded-lg border border-gray-600 bg-gray-700 py-2 text-xs font-bold text-white hover:bg-gray-600 disabled:opacity-40">
+                  className={cx('min-w-[64px] flex-1 rounded-lg border py-2.5 text-xs font-bold shadow-md hover:brightness-110 disabled:opacity-40', OPTION_STYLE[option] || 'border-gray-600 bg-gray-700 text-white')}>
                   {option}
                 </button>
               );
@@ -176,7 +207,7 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
                   type="button"
                   disabled={disabled}
                   onClick={() => (active ? setStatus(t.status || '') : setOpenGroup(b.group))}
-                  className={cx('flex-1 rounded-lg border py-2 text-xs font-bold transition disabled:opacity-40', active ? GROUP_STYLE[b.group].active : 'border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700')}
+                  className={cx('flex-1 rounded-lg border py-2.5 text-xs font-bold transition disabled:opacity-30', active ? GROUP_STYLE[b.group].active : GROUP_STYLE[b.group].idle)}
                 >
                   {active ? t.status : b.label}
                 </button>
