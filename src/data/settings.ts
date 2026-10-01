@@ -1,11 +1,12 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { DEFAULT_MARKETS } from '../domain/markets';
-import { firestore, withTimeout } from './firebase';
+import { firestore, IS_DEMO, withTimeout, write } from './firebase';
 
 const marketsDoc = () => doc(firestore, 'settings', 'markets_v2');
 
 /** 건물 목록 (Firestore settings/markets_v2) */
 export async function fetchMarkets(): Promise<string[]> {
+  if (IS_DEMO) return [...DEFAULT_MARKETS];
   try {
     const snap = await withTimeout(getDoc(marketsDoc()), 8000, '건물 목록 조회');
     const list = snap.exists() ? snap.data().list : null;
@@ -17,5 +18,6 @@ export async function fetchMarkets(): Promise<string[]> {
 }
 
 export async function saveMarkets(markets: string[]): Promise<void> {
-  await withTimeout(setDoc(marketsDoc(), { list: markets, updatedAt: new Date().toISOString() }, { merge: true }), 8000, '건물 목록 저장');
+  if (IS_DEMO) return;
+  await write(setDoc(marketsDoc(), { list: markets, updatedAt: new Date().toISOString() }, { merge: true }), '건물 목록 저장');
 }

@@ -1,7 +1,7 @@
 import { onValue, ref, set } from 'firebase/database';
 import { collection, deleteDoc, doc, getDocs, writeBatch } from 'firebase/firestore';
 import type { GroupRule } from '../types';
-import { firestore, rtdb, withTimeout } from './firebase';
+import { firestore, IS_DEMO, rtdb, withTimeout, write } from './firebase';
 
 /**
  * 대표거래처 규칙은 RTDB collectionGroupRules (배열) 가 기준이다.
@@ -35,6 +35,7 @@ export const cleanRules = (list: unknown): GroupRule[] =>
     .filter((r): r is GroupRule => r !== null);
 
 export function subscribeGroupRules(onChange: (rules: GroupRule[]) => void, onError?: (e: Error) => void) {
+  if (IS_DEMO) return () => undefined;
   return onValue(ref(rtdb, 'collectionGroupRules'), snap => onChange(cleanRules(snap.val())), e => onError?.(e));
 }
 
@@ -51,12 +52,14 @@ async function mirrorToFirestore(rules: GroupRule[]): Promise<void> {
 }
 
 export async function saveGroupRules(rules: GroupRule[]): Promise<void> {
+  if (IS_DEMO) return;
   const clean = cleanRules(rules);
-  await withTimeout(set(ref(rtdb, 'collectionGroupRules'), clean), 10000, '대표거래처 저장');
+  await write(set(ref(rtdb, 'collectionGroupRules'), clean), '대표거래처 저장');
   mirrorToFirestore(clean).catch(e => console.warn('Firestore 대표거래처 동기화 실패:', e));
 }
 
 export async function deleteAllGroupRules(): Promise<void> {
+  if (IS_DEMO) return;
   await set(ref(rtdb, 'collectionGroupRules'), null);
   const snap = await getDocs(collection(firestore, 'collectionGroupRules')).catch(() => null);
   await Promise.all((snap?.docs || []).map(d => deleteDoc(d.ref))).catch(() => undefined);

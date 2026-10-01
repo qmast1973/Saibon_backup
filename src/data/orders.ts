@@ -3,7 +3,7 @@ import type { Transaction } from '../types';
 import { normalizeDate } from '../domain/dates';
 import { parseAmount } from '../domain/format';
 import { DEPOSIT_MARKET, RECEIVABLE_MARKET, normalizeMarket } from '../domain/markets';
-import { rtdb, withTimeout } from './firebase';
+import { IS_DEMO, rtdb, withTimeout, write } from './firebase';
 
 /**
  * RTDB 저장 형식: orders/{YYYY-MM-DD}/{orderId}
@@ -119,6 +119,7 @@ export function encodeOrder(t: Transaction): OrderRecord {
 }
 
 export function subscribeOrders(onChange: (orders: Transaction[]) => void, onError?: (e: Error) => void) {
+  if (IS_DEMO) return () => undefined;
   const recent = query(ref(rtdb, 'orders'), orderByKey(), limitToLast(SYNC_DAYS));
   return onValue(
     recent,
@@ -174,11 +175,7 @@ export async function saveOrders(list: Transaction[]): Promise<Transaction[]> {
     Object.assign(updates, prepared.updates);
   }
   if (Object.keys(updates).length > 0) {
-    // 오프라인이면 Firebase가 쓰기를 보관했다가 연결되면 보낸다. 화면을 막지 않도록 일정 시간만 기다린다.
-    await withTimeout(update(ref(rtdb), updates), 15000, '주문 저장').catch(e => {
-      if (!String(e?.message).includes('시간 초과')) throw e;
-      console.warn('주문 저장이 지연되고 있습니다. 연결되면 자동으로 저장됩니다.');
-    });
+    if (!IS_DEMO) await write(update(ref(rtdb), updates), '주문 저장', 15000);
   }
   return saved;
 }
@@ -186,8 +183,8 @@ export async function saveOrders(list: Transaction[]): Promise<Transaction[]> {
 export async function deleteOrder(t: Transaction): Promise<void> {
   const orderId = t.firebaseOrderId;
   const dateKey = t.firebaseDate || normalizeDate(t.date);
-  if (!orderId || !dateKey) return;
-  await withTimeout(remove(ref(rtdb, `orders/${dateKey}/${orderId}`)), 10000, '주문 삭제');
+  if (!orderId || !dateKey || IS_DEMO) return;
+  await write(remove(ref(rtdb, `orders/${dateKey}/${orderId}`)), '주문 삭제');
 }
 
 /**
@@ -195,6 +192,7 @@ export async function deleteOrder(t: Transaction): Promise<void> {
  * 상호·금액이 모두 빈 레코드는 orders 에서 빼고 empties 로 따로 돌려준다.
  */
 export async function fetchAllOrders(): Promise<{ orders: Transaction[]; empties: Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>[] }> {
+  if (IS_DEMO) throw new Error('미리보기에서는 서버 데이터를 불러올 수 없습니다.');
   const snapshot = await withTimeout(get(ref(rtdb, 'orders')), 20000, '전체 주문 조회');
   const orders: Transaction[] = [];
   const empties: Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>[] = [];
@@ -216,9 +214,10 @@ export async function deleteOrders(list: Pick<Transaction, 'firebaseOrderId' | '
     const dateKey = t.firebaseDate || normalizeDate(t.date);
     if (t.firebaseOrderId && dateKey) updates[`orders/${dateKey}/${t.firebaseOrderId}`] = null;
   }
-  if (Object.keys(updates).length > 0) await withTimeout(update(ref(rtdb), updates), 20000, '주문 삭제');
+  if (Object.keys(updates).length > 0 && !IS_DEMO) await write(update(ref(rtdb), updates), '주문 삭제', 20000);
 }
 
 export async function deleteAllOrders(): Promise<void> {
+  if (IS_DEMO) return;
   await set(ref(rtdb, 'orders'), null);
 }

@@ -1,7 +1,7 @@
 import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { get, onValue, ref, remove, set } from 'firebase/database';
 import type { User, UserRole } from '../types';
-import { auth, rtdb, withTimeout } from './firebase';
+import { auth, IS_DEMO, rtdb, withTimeout, write } from './firebase';
 
 /** RTDB users/{username} */
 export const userKey = (username: string) => String(username || '').trim().toLowerCase();
@@ -16,10 +16,12 @@ function cleanUsers(data: unknown): User[] {
 }
 
 export function subscribeUsers(onChange: (users: User[]) => void, onError?: (e: Error) => void) {
+  if (IS_DEMO) return () => undefined;
   return onValue(ref(rtdb, 'users'), snap => onChange(cleanUsers(snap.val())), e => onError?.(e));
 }
 
 export async function fetchUsers(): Promise<User[]> {
+  if (IS_DEMO) throw new Error('미리보기');
   const snap = await withTimeout(get(ref(rtdb, 'users')), 10000, '회원 조회');
   return cleanUsers(snap.val());
 }
@@ -28,12 +30,12 @@ export async function saveUser(user: User): Promise<User> {
   const key = userKey(user.username);
   if (!key) throw new Error('아이디가 없습니다.');
   const payload: User = JSON.parse(JSON.stringify({ ...user, username: key, updatedAt: new Date().toISOString() }));
-  await withTimeout(set(ref(rtdb, `users/${key}`), payload), 10000, '회원 저장');
+  if (!IS_DEMO) await write(set(ref(rtdb, `users/${key}`), payload), '회원 저장');
   return payload;
 }
 
 export async function deleteUser(username: string): Promise<void> {
-  await withTimeout(remove(ref(rtdb, `users/${userKey(username)}`)), 10000, '회원 삭제');
+  if (!IS_DEMO) await write(remove(ref(rtdb, `users/${userKey(username)}`)), '회원 삭제');
 }
 
 /** 관리자를 제외한 회원 전체 삭제 */

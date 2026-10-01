@@ -21,9 +21,24 @@ export const auth = getAuth(app);
 export const rtdb = getDatabase(app);
 export const firestore = getFirestore(app, FIRESTORE_DATABASE_ID);
 
+/** 미리보기(데모) 빌드: Firebase에 전혀 접속하지 않고 화면에서만 동작한다 */
+export const IS_DEMO = import.meta.env.VITE_DEMO === '1';
+
+/**
+ * 쓰기 요청. 연결이 끊겨 있으면 Firebase가 요청을 보관했다가 다시 연결될 때 보내므로,
+ * 시간 안에 응답이 없어도 실패로 보지 않고 계속 진행한다. (권한 거부 같은 진짜 오류는 그대로 알린다)
+ */
+export async function write(promise: Promise<unknown>, label: string, ms = 10000): Promise<void> {
+  try {
+    await withTimeout(promise, ms, label);
+  } catch (e) {
+    if (!String((e as Error)?.message).includes('시간 초과')) throw e;
+    console.warn(`${label}: 응답 지연 - 연결되면 자동으로 저장됩니다.`);
+  }
+}
+
 /** 네트워크가 끊겨도 화면이 멈추지 않도록 일정 시간 후 포기한다. */
 export function withTimeout<T>(promise: Promise<T>, ms: number, label = '요청'): Promise<T> {
-  if (import.meta.env.VITE_DEMO === '1') ms = 800;
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} 시간 초과`)), ms)),

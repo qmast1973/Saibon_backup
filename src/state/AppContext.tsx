@@ -213,17 +213,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRules(next);
     cache.saveCachedRules(next);
     await saveGroupRules(next);
-  }, []);
+    if (!navigator.onLine) notify('오프라인 상태입니다. 연결되면 자동으로 저장됩니다.');
+  }, [notify]);
 
   const saveUser = useCallback(async (u: User) => {
     const saved = await saveUserRemote(u);
+    if (!navigator.onLine) notify('오프라인 상태입니다. 연결되면 자동으로 저장됩니다.');
     setUsers(prev => [...prev.filter(x => userKey(x.username) !== saved.username), saved]);
     if (userRef.current && userKey(userRef.current.username) === saved.username) {
       setUser(saved);
       cache.refreshSessionUser(saved);
     }
     return saved;
-  }, []);
+  }, [notify]);
 
   const removeUserLocal = useCallback((username: string) => {
     setUsers(prev => prev.filter(u => userKey(u.username) !== userKey(username)));
