@@ -98,3 +98,16 @@ describe('이월 미수금', () => {
     expect(carry.get('대표A')?.amount).toBe(-10);
   });
 });
+
+import { defaultItemCount } from './ledger';
+describe('상태 기준 갯수 (사장님 규칙)', () => {
+  it('1이 되는 상태는 0이면 1, 이미 입력한 숫자는 유지', () => {
+    expect(defaultItemCount('주문찾기', 0)).toBe(1);
+    expect(defaultItemCount('주문찾기', undefined)).toBe(1);
+    expect(defaultItemCount('주문찾기', 2)).toBe(2);
+  });
+  it('0이 되는 상태는 0, 교환/매입은 1', () => {
+    expect(defaultItemCount('올미송(결제만)', 3)).toBe(0);
+    expect(defaultItemCount('교환/매입', 0)).toBe(1);
+  });
+});

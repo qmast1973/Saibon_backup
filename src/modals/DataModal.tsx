@@ -11,7 +11,7 @@ import { isAdmin } from '../domain/access';
 import { toDateStr } from '../domain/dates';
 import { formatMoney } from '../domain/format';
 import { exportLedger, readLedgerExcel, toThousandUnit, type ExcelRow } from '../domain/excel';
-import { dedupeTransactions } from '../domain/ledger';
+import { dedupeTransactions, defaultItemCount, hasStatus, isOrder } from '../domain/ledger';
 import { useApp } from '../state/AppContext';
 import { Button, ConfirmDialog, FileButton, Modal } from '../components/ui';
 import { IS_DEMO } from '../data/firebase';
@@ -159,6 +159,26 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
       });
     });
 
+  // 상태는 있는데 물건 갯수가 비어 있는 옛 기록(엑셀로 가져온 것 등)에 주문처리 버튼과 같은 규칙으로 갯수를 채운다. 실제 갯수가 아닌 추정치.
+  const fillCounts = () =>
+    task('갯수 확인', async () => {
+      const { orders: all } = await loadAll('갯수 확인');
+      const targets = all.filter(t => isOrder(t) && hasStatus(t) && !(Number(t.itemCount) > 0) && defaultItemCount(t.status, t.itemCount) > 0);
+      if (targets.length === 0) {
+        notify('갯수를 채울 기록이 없습니다.', 'success');
+        return;
+      }
+      setConfirm({
+        title: '상태 기준 갯수 채우기',
+        message: `처리 상태는 있는데 물건 갯수가 비어 있는 주문 ${targets.length}건에 갯수 1을 넣습니다.\n(주문찾기 · 샘플 · 미송(찾기) · 교환 · 반송 · 교환/매입 → 1, 올미송 · 반품만 · 매입처리 · 주문없음 · 물건없음은 0 그대로)\n\n실제 갯수가 아니라 추정치입니다. 2개 이상이었던 주문은 주문처리에서 직접 고치세요.`,
+        label: `${targets.length}건 채우기`,
+        run: async () => {
+          await saveOrders(targets.map(t => ({ ...t, itemCount: defaultItemCount(t.status, t.itemCount) })));
+          notify(`${targets.length}건의 갯수를 채웠습니다.`, 'success');
+        },
+      });
+    });
+
   const resetData = (withUsers: boolean) =>
     setConfirm({
       title: withUsers ? '전체 초기화' : '장부 초기화',
@@ -197,6 +217,12 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
         <Section title="중복 정리" description="엑셀을 여러 번 올리는 등으로 완전히 같은 주문이 여러 개 생긴 경우, 1건만 남기고 정리합니다.">
           <Button tone="warning" disabled={!!busy} onClick={dedupe}><Layers className="h-4 w-4" />중복 데이터 찾기</Button>
         </Section>
+
+        {admin && (
+          <Section title="상태 기준 갯수 채우기 (관리자)" description="상태는 있는데 물건 갯수가 비어 있는 옛 기록에 주문처리 버튼과 같은 규칙으로 갯수를 넣습니다. 실제 갯수가 아닌 추정치입니다.">
+            <Button tone="warning" disabled={!!busy} onClick={fillCounts}><Layers className="h-4 w-4" />갯수 빈 기록 채우기</Button>
+          </Section>
+        )}
 
         {admin && (
           <Section title="금액 단위 바로잡기 (관리자)" description="엑셀 · 백업을 가져오다 금액이 1000배로 들어간 경우(35,000원이 35,000,000원으로 보임) 1,000 이상 금액을 1000으로 나눕니다.">

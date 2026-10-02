@@ -133,12 +133,18 @@ export const COUNT_ONE_STATUSES = new Set(['주문찾기', '샘플', '미송(찾
 export const COUNT_ZERO_STATUSES = new Set(['올미송(결제만)', '반품만', '매입처리', '주고옴', '주문없음', '물건없음']);
 
 /** 같은 상태를 다시 누르면 처리 대기('')로 되돌린다 (갯수는 그대로). */
-export function applyStatus(t: Transaction, nextStatus: string, managerName: string): Transaction {
-  const status = t.status === nextStatus ? '' : nextStatus;
-  let itemCount = Number(t.itemCount ?? 0) || 0;
+export function defaultItemCount(rawStatus: string | undefined, current: number | undefined): number {
+  const status = String(rawStatus || '').trim();
+  let itemCount = Number(current ?? 0) || 0;
   if (EXCHANGE_PURCHASE.has(status)) itemCount = 1;
   else if (COUNT_ZERO_STATUSES.has(status)) itemCount = 0;
   else if (COUNT_ONE_STATUSES.has(status) && itemCount <= 0) itemCount = 1;
+  return itemCount;
+}
+
+export function applyStatus(t: Transaction, nextStatus: string, managerName: string): Transaction {
+  const status = t.status === nextStatus ? '' : nextStatus;
+  const itemCount = defaultItemCount(status, t.itemCount);
 
   const isReturn = RETURN_STATUSES.has(status) ? true : t.isReturn;
   return {
