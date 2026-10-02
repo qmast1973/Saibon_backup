@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { HandCoins, Layers, Plus } from 'lucide-react';
 import type { Transaction } from '../types';
 import type { Nav } from '../App';
-import { filterVisible, isAdmin } from '../domain/access';
-import { fetchAllOrders } from '../data/orders';
-import { IS_DEMO } from '../data/firebase';
+import { isAdmin } from '../domain/access';
+import { useOlderOrders } from '../hooks/useOlderOrders';
 import { formatMoney } from '../domain/format';
 import { getBillingStore, getSubStores, matchesTransaction } from '../domain/groups';
 import { isFeeCharged, isOrder, isReceivable, splitAmounts, toggleFeeCharged } from '../domain/ledger';
@@ -17,12 +16,10 @@ import { Badge, Button, ConfirmDialog, Field, Input, Modal, MoneyInput, Screen, 
 
 type StatusFilter = '' | '미처리' | '완료' | '미수';
 
-// 90일 이전 기록은 자주 바뀌지 않으므로 화면을 다시 열어도 다시 받지 않는다
-let olderCache: { before: string; rows: Transaction[] } | null = null;
 
 /** 수금관리: 날짜별로 거래처(대표 기준) 청구 · 입금 · 미수를 보고 수금을 입력 */
 export function CollectionScreen({ nav }: { nav: Nav }) {
-  const { user, users, rules, orders, visibleOrders, includeFee, saveOrders, deleteOrder, notify } = useApp();
+  const { user, users, rules, visibleOrders, includeFee, saveOrders, deleteOrder, notify } = useApp();
   const [storeQuery, setStoreQuery] = useState('');
   const [buyer, setBuyer] = useState('');
   const [status, setStatus] = useState<StatusFilter>('');
@@ -35,22 +32,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
 
   // 이전 날짜에서 못 받은 금액은 다음 날 수금 화면에 같이 넘어온다
   // 화면은 최근 90일만 실시간으로 받으므로, 그보다 오래된 미수금이 빠지지 않게 오래된 기록은 따로 받아서 이월에 넣는다
-  const windowStart = useMemo(() => orders.reduce((min, t) => (t.date && (!min || t.date < min) ? t.date : min), ''), [orders]);
-  const [older, setOlder] = useState<{ before: string; rows: Transaction[] } | null>(olderCache);
-  useEffect(() => {
-    if (IS_DEMO || !windowStart || older?.before === windowStart) return;
-    let cancelled = false;
-    fetchAllOrders(undefined, windowStart)
-      .then(r => {
-        olderCache = { before: windowStart, rows: r.orders };
-        if (!cancelled) setOlder(olderCache);
-      })
-      .catch(() => !cancelled && notify('90일 이전 미수금을 불러오지 못했습니다. 최근 90일 기준으로 표시합니다.', 'error'));
-    return () => {
-      cancelled = true;
-    };
-  }, [windowStart]); // eslint-disable-line react-hooks/exhaustive-deps
-  const olderVisible = useMemo(() => (older && user ? filterVisible(older.rows, user, users, rules) : []), [older, user, users, rules]);
+  const { rows: olderVisible } = useOlderOrders(true);
 
   const carry = useMemo(
     () => computeCarryOver([...olderVisible, ...visibleOrders], nav.date, { rules, users, includeFee }),

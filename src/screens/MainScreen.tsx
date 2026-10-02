@@ -8,6 +8,7 @@ import { formatLocation, formatMoney } from '../domain/format';
 import { getBillingStore, getMerchantBundle, getSubStores, matchesTransaction, sortByStoreFocus } from '../domain/groups';
 import { hasStatus, isReceivable, splitAmounts } from '../domain/ledger';
 import { compact, fuzzyIncludes, uniqueSorted } from '../domain/text';
+import { useOlderOrders } from '../hooks/useOlderOrders';
 import { useApp } from '../state/AppContext';
 import { Badge, Button, ConfirmDialog, EmptyState, StoreSearch, cx } from '../components/ui';
 
@@ -26,8 +27,13 @@ export function MainScreen({ nav }: { nav: Nav }) {
     [isMerchant, user, rules, orders],
   );
 
+  // 검색할 때는 최근 90일 밖의 오래된 기록까지 찾는다 (예전에 어디서 주문했는지 기억이 안 날 때)
+  const searching = deferredQuery.trim().length > 0;
+  const { rows: olderRows, loading: loadingOlder, failed: olderFailed } = useOlderOrders(searching);
+  const searchable = useMemo(() => (searching && olderRows.length > 0 ? [...olderRows, ...visibleOrders] : visibleOrders), [searching, olderRows, visibleOrders]);
+
   const filtered = useMemo(() => {
-    let list = visibleOrders;
+    let list = searchable;
     if (isMerchant && bundleFilter !== 'all') {
       const f = compact(bundleFilter);
       list = list.filter(t => {
@@ -37,7 +43,7 @@ export function MainScreen({ nav }: { nav: Nav }) {
     }
     if (deferredQuery.trim()) list = list.filter(t => matchesTransaction(t, deferredQuery, rules));
     return list;
-  }, [visibleOrders, isMerchant, bundleFilter, deferredQuery, rules]);
+  }, [searchable, isMerchant, bundleFilter, deferredQuery, rules]);
 
   // 관리자가 대표거래처명으로 검색하면 어떤 종속 거래처가 함께 잡히는지 알려 준다
   const searchedGroup = useMemo(() => {
@@ -86,8 +92,55 @@ export function MainScreen({ nav }: { nav: Nav }) {
         </section>
       )}
 
+      {searching && <SearchResults rows={filtered} loading={loadingOlder} failed={olderFailed} onPick={nav.setDate} />}
+
       <CalendarView nav={nav} orders={filtered} />
     </main>
+  );
+}
+
+/** 검색 결과 목록 (전체 기간, 최근 날짜부터). 누르면 그 날짜로 이동한다. */
+function SearchResults({ rows, loading, failed, onPick }: { rows: Transaction[]; loading: boolean; failed: boolean; onPick: (date: string) => void }) {
+  const [limit, setLimit] = useState(50);
+  useEffect(() => setLimit(50), [rows]);
+  const sorted = useMemo(() => [...rows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [rows]);
+
+  return (
+    <section className="rounded-2xl border border-indigo-900/70 bg-indigo-950/40 p-3">
+      <p className="mb-2 flex flex-wrap items-center gap-x-2 text-xs font-bold text-indigo-200">
+        검색 결과 {rows.length}건 <span className="font-normal text-indigo-300/80">(전체 기간, 최근 날짜순)</span>
+        {loading && <span className="font-normal text-amber-300">이전 기록 불러오는 중...</span>}
+        {failed && <span className="font-normal text-rose-300">90일 이전 기록은 불러오지 못했습니다</span>}
+      </p>
+      {sorted.length === 0 ? (
+        <p className="py-3 text-center text-xs text-gray-400">{loading ? '찾는 중입니다...' : '검색 결과가 없습니다.'}</p>
+      ) : (
+        <ul className="max-h-80 space-y-1.5 overflow-y-auto overscroll-contain">
+          {sorted.slice(0, limit).map(t => (
+            <li key={t.id || `${t.date}-${t.store}-${t.room}`}>
+              <button type="button" onClick={() => onPick(t.date)} className="flex min-h-[48px] w-full flex-col gap-0.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-left hover:border-indigo-600">
+                <span className="flex flex-wrap items-center gap-x-2 text-xs">
+                  <b className="font-mono text-indigo-300">{t.date}</b>
+                  <b className="text-sm text-gray-100">{t.store || '상호 미지정'}</b>
+                  {t.status && <Badge className="bg-emerald-900 text-emerald-200">{t.status}</Badge>}
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  {formatLocation(t) || '-'}
+                  {t.remark ? ` · ${t.remark}` : ''}
+                  {t.manager ? ` · ${t.manager}` : ''}
+                  {t.expense ? ` · ${formatMoney(t.expense)}` : ''}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {sorted.length > limit && (
+        <button type="button" onClick={() => setLimit(l => l + 100)} className="mt-2 min-h-[44px] w-full rounded-xl border border-gray-700 bg-gray-900 text-xs font-bold text-gray-200">
+          더 보기 ({sorted.length - limit}건 남음)
+        </button>
+      )}
+    </section>
   );
 }
 
