@@ -25,6 +25,8 @@ export async function seedDemo() {
     mk(4, { store: '대표상호A', market: '입금', floor: '', room: '', income: 20, status: '완료', remark: '수금' }),
     mk(5, { store: '예시상호C', market: '테크노', floor: '1', room: '5호', status: '미송(찾기)', itemCount: 1, isReturn: true }),
     mk(6, { store: '예시상호C', market: '디자이너', floor: '2', room: '15호', expense: 8 }),
+    mk(7, { store: '예시상호D', market: 'APM', floor: '4', room: '3호', status: '올미송(결제만)', itemCount: 0, expense: 5 }),
+    mk(8, { store: '예시상호D', market: 'APM', floor: '4', room: '9호', status: '교환', itemCount: 0 }), // 갯수 0이면 안 되는 상태 (집계 화면의 확인 표시 예시)
   ];
   try {
     localStorage.setItem('saipon.autoLogin', 'true');
