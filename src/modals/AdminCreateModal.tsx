@@ -10,12 +10,15 @@ import { Button, Field, Input, Modal, PasswordInput } from '../components/ui';
  * 관리자가 하나도 없으면 최초 관리자를 만들고, 이미 있으면 로그인한 관리자이거나 기존 관리자 인증이 필요하다.
  */
 export function AdminCreateModal({ onClose }: { onClose: () => void }) {
-  const { user: me, saveUser, notify } = useApp();
+  const { user: me, users: knownUsers, usersAccess, saveUser, notify } = useApp();
   const [form, setForm] = useState({ authId: '', authPw: '', name: '', email: '', phone: '', id: '', pw: '', pw2: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form) => (v: string) => setForm(p => ({ ...p, [k]: v }));
   const loggedInAdmin = me?.role === 'admin';
+  // 서버 회원 목록에 관리자가 하나도 없으면 최초 관리자이므로 기존 관리자 인증을 묻지 않는다
+  const firstAdmin = usersAccess === 'ok' && !knownUsers.some(u => u.role === 'admin');
+  const needAuth = !loggedInAdmin && !firstAdmin;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -68,12 +71,12 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="관리자 계정 추가" icon={<ShieldCheck className="h-5 w-5 text-rose-400" />} onClose={onClose} size="sm" z="z-[300]"
-      subtitle={loggedInAdmin ? '새 관리자 계정을 만듭니다.' : '관리자가 이미 있으면 기존 관리자 인증이 필요합니다.'}
+      subtitle={loggedInAdmin ? '새 관리자 계정을 만듭니다.' : firstAdmin ? '아직 관리자가 없어서 최초 관리자를 만듭니다.' : '관리자가 이미 있으면 기존 관리자 인증이 필요합니다.'}
     >
       <form onSubmit={submit} className="space-y-3">
-        {!loggedInAdmin && (
+        {needAuth && (
           <div className="space-y-2 rounded-xl border border-gray-800 bg-gray-950 p-3">
-            <p className="text-[11px] text-gray-400">기존 관리자 인증 (최초 생성 시에는 비워 두세요)</p>
+            <p className="text-[11px] text-gray-400">기존 관리자 인증</p>
             <Input value={form.authId} onChange={e => set('authId')(sanitizeLoginId(e.target.value))} placeholder="기존 관리자 아이디" autoComplete="off" />
             <PasswordInput value={form.authPw} onChange={set('authPw')} placeholder="기존 관리자 비밀번호" autoComplete="off" />
           </div>
