@@ -48,7 +48,7 @@ interface AppState {
   replaceOrdersLocal: (list: Transaction[]) => void;
   saveRules: (rules: GroupRule[]) => Promise<void>;
   saveUser: (user: User) => Promise<User>;
-  saveStoreOrder: (order: string[]) => Promise<void>;
+  saveStoreOrder: (order: string[], field?: 'storeOrder' | 'collectionOrder') => Promise<void>;
   removeUserLocal: (username: string) => void;
 }
 
@@ -263,14 +263,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [notify]);
 
   // 갯수 집계에서 정한 거래처 순서 (로그인한 본인 것만, 다른 기기에서도 같은 순서로 보인다)
-  const saveStoreOrder = useCallback(async (order: string[]) => {
+  const saveStoreOrder = useCallback(async (order: string[], field: 'storeOrder' | 'collectionOrder' = 'storeOrder') => {
     const me = userRef.current;
     if (!me) return;
-    const next: User = { ...me, storeOrder: order.length ? order : undefined };
+    const next: User = { ...me, [field]: order.length ? order : undefined };
     setUser(next);
-    setUsers(prev => prev.map(x => (userKey(x.username) === userKey(me.username) ? { ...x, storeOrder: next.storeOrder } : x)));
+    setUsers(prev => prev.map(x => (userKey(x.username) === userKey(me.username) ? { ...x, [field]: next[field] } : x)));
     cache.refreshSessionUser(next);
-    await saveStoreOrderRemote(me.username, order);
+    await saveStoreOrderRemote(me.username, order, field);
   }, []);
 
   const removeUserLocal = useCallback((username: string) => {

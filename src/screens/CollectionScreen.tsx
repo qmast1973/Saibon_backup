@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { HandCoins, Layers, Plus } from 'lucide-react';
+import { HandCoins, Layers, ListOrdered, Plus } from 'lucide-react';
 import type { Transaction } from '../types';
 import type { Nav } from '../App';
 import { isAdmin } from '../domain/access';
@@ -8,7 +8,7 @@ import { formatMoney } from '../domain/format';
 import { getBillingStore, getSubStores, matchesTransaction } from '../domain/groups';
 import { isFeeCharged, isOrder, isReceivable, splitAmounts, toggleFeeCharged } from '../domain/ledger';
 import { DEPOSIT_MARKET } from '../domain/markets';
-import { buildStoreGroups, computeCarryOver, type CarryOver, type StoreGroup } from '../domain/storeGroups';
+import { applyStoreOrder, buildStoreGroups, computeCarryOver, moveToIndex, type CarryOver, type StoreGroup } from '../domain/storeGroups';
 import { compact, fuzzyIncludes, uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { StoreGroupTable } from '../components/StoreGroupTable';
@@ -19,10 +19,11 @@ type StatusFilter = '' | '미처리' | '완료' | '미수';
 
 /** 수금관리: 날짜별로 거래처(대표 기준) 청구 · 입금 · 미수를 보고 수금을 입력 */
 export function CollectionScreen({ nav }: { nav: Nav }) {
-  const { user, users, rules, visibleOrders, includeFee, saveOrders, deleteOrder, notify } = useApp();
+  const { user, users, rules, visibleOrders, includeFee, saveOrders, deleteOrder, saveStoreOrder, notify } = useApp();
   const [storeQuery, setStoreQuery] = useState('');
   const [buyer, setBuyer] = useState('');
   const [status, setStatus] = useState<StatusFilter>('');
+  const [editingOrder, setEditingOrder] = useState(false);
   const [entry, setEntry] = useState<{ store: string } | null>(null);
   const [editDeposit, setEditDeposit] = useState<Transaction | null>(null);
   const [deleteDeposit, setDeleteDeposit] = useState<Transaction | null>(null);
@@ -63,10 +64,15 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
       }),
     [dayRows, storeQuery, buyer, status, rules],
   );
+  const savedOrder = user?.collectionOrder;
+  // 본인이 정한 거래처 순서(수금 도는 순서)대로 보여 준다. 정한 적이 없으면 지역 · 상호 순서.
   const groups = useMemo(
-    () => buildStoreGroups(filteredRows, { mode: 'collection', rules, users, includeFee, carry: shownCarry }),
-    [filteredRows, rules, users, includeFee, shownCarry],
+    () => applyStoreOrder(buildStoreGroups(filteredRows, { mode: 'collection', rules, users, includeFee, carry: shownCarry }), savedOrder),
+    [filteredRows, rules, users, includeFee, shownCarry, savedOrder],
   );
+  const saveOrder = (order: string[]) =>
+    saveStoreOrder(order, 'collectionOrder').catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'));
+  const dropStore = (store: string, toIndex: number) => saveOrder(moveToIndex(savedOrder, groups.map(g => g.store), store, toIndex));
 
   const totals = useMemo(() => {
     const orders = dayRows.filter(isOrder);
@@ -101,6 +107,9 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
       width="max-w-6xl"
       actions={
         <>
+          <Button tone={editingOrder ? 'primary' : 'secondary'} onClick={() => setEditingOrder(v => !v)}>
+            <ListOrdered className="h-4 w-4" />{editingOrder ? '순서 편집 끝' : '순서 편집'}
+          </Button>
           {isAdmin(user) && <Button tone="violet" onClick={() => nav.open({ type: 'rules' })}><Layers className="h-4 w-4" />대표거래처 관리</Button>}
           <Button tone="success" onClick={() => setEntry({ store: storeQuery })}><Plus className="h-4 w-4" />수금 입력</Button>
         </>
@@ -136,7 +145,15 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
         </Select>
       </div>
 
+      {editingOrder && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-700 bg-indigo-950/60 p-3 text-xs text-indigo-100">
+          <span>거래처 오른쪽의 <b>⋮⋮ 손잡이를 꾹 눌렀다가</b>(0.3초) 원하는 위치로 끌어 놓으세요. <b>수금하러 도는 순서대로</b> 놓으면 바로 저장되고, 다른 기기에서도 같은 순서로 보입니다.</span>
+          {savedOrder && savedOrder.length > 0 && <Button size="sm" onClick={() => saveOrder([])}>기본 순서로 되돌리기</Button>}
+        </div>
+      )}
+
       <StoreGroupTable
+        reorder={{ editing: editingOrder, onDrop: dropStore }}
         groups={groups}
         mode="collection"
         onOpenOrder={t => nav.open({ type: 'order', tx: t })}
