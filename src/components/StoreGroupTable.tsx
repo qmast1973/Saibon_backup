@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Layers, Pencil, Plus, Store, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Layers, Pencil, Plus, Store, Trash2 } from 'lucide-react';
 import type { Transaction } from '../types';
 import { formatLocation, formatMoney } from '../domain/format';
 import { getSubStores, sortByStoreFocus } from '../domain/groups';
@@ -15,6 +15,8 @@ interface Actions {
   onEditDeposit?: (t: Transaction) => void;
   onDeleteDeposit?: (t: Transaction) => void;
   onCollect?: (g: StoreGroup) => void;
+  /** 갯수 집계: 거래처 순서 직접 정하기 (editing 이면 ▲▼ 버튼이 보인다) */
+  reorder?: { editing: boolean; onMove: (store: string, dir: -1 | 1) => void };
 }
 
 /** 거래처 한 줄에 묶인 주문들의 비고를 중복 없이 '/'로 이어 붙인다 (입금 · 미수금 기록은 제외) */
@@ -23,12 +25,13 @@ function remarkOf(rows: Transaction[]): string {
 }
 
 /** 대표 거래처별 합계 표. 행을 누르면 상세 내역, '종속 n곳'을 누르면 종속 거래처별 소계가 펼쳐진다. */
-export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGroup[]; mode: GroupMode } & Actions) {
+export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups: StoreGroup[]; mode: GroupMode } & Actions) {
   const { rules } = useApp();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [detail, setDetail] = useState<{ store: string; sub: string | null } | null>(null);
   const detailGroup = detail ? groups.find(g => g.store === detail.store) : undefined;
   const isCollection = mode === 'collection';
+  const moving = !isCollection && !!reorder?.editing;
 
   return (
     <>
@@ -37,6 +40,7 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
           <table className="w-full sm:min-w-[620px] whitespace-nowrap text-left text-sm text-gray-300">
             <thead className="border-b border-gray-800 bg-gray-800/50 text-xs text-gray-400">
               <tr>
+                {moving && <th className="w-24 p-1 text-center text-[10px] font-semibold">순서</th>}
                 <th className="hidden p-3 font-semibold sm:table-cell">{isCollection ? '지역' : '상가'}</th>
                 <th className="p-3 font-semibold">상호</th>
                 <th className="hidden p-3 text-center font-semibold sm:table-cell">주문</th>
@@ -49,7 +53,7 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                 ) : (
                   <>
                     <th className="p-2 text-right font-semibold sm:p-3">물건 갯수</th>
-                    <th className="p-2 font-semibold sm:p-3">비고</th>
+                    <th className={cx('p-2 font-semibold sm:p-3', moving && 'hidden sm:table-cell')}>비고</th>
                   </>
                 )}
               </tr>
@@ -64,6 +68,14 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                 return (
                   <Fragment key={g.store}>
                     <tr className="cursor-pointer transition hover:bg-indigo-950/40" onClick={() => setDetail({ store: g.store, sub: null })}>
+                      {moving && (
+                        <td className="p-1" onClick={e => e.stopPropagation()}>
+                          <span className="flex items-center justify-center gap-1">
+                            <button type="button" aria-label={`${g.store} 위로`} disabled={groups[0] === g} onClick={() => reorder!.onMove(g.store, -1)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-600 bg-gray-800 text-gray-100 active:bg-indigo-700 disabled:opacity-25"><ArrowUp className="h-5 w-5" /></button>
+                            <button type="button" aria-label={`${g.store} 아래로`} disabled={groups[groups.length - 1] === g} onClick={() => reorder!.onMove(g.store, 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-600 bg-gray-800 text-gray-100 active:bg-indigo-700 disabled:opacity-25"><ArrowDown className="h-5 w-5" /></button>
+                          </span>
+                        </td>
+                      )}
                       <td className="hidden p-3 font-semibold sm:table-cell">{isCollection ? g.region : g.rows[0]?.market || '-'}</td>
                       <td className="whitespace-normal p-2 font-bold text-gray-100 sm:p-3">
                         <span className="flex flex-wrap items-center gap-1.5">
@@ -104,7 +116,7 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                       ) : (
                         <>
                           <td className="p-2 text-right text-xs font-bold text-emerald-400 sm:p-3 sm:text-sm">{g.itemCount}개</td>
-                          <td className="min-w-[110px] whitespace-normal break-words p-2 text-xs font-normal text-gray-300 sm:p-3">{remarkOf(g.rows) || <span className="text-gray-600">-</span>}</td>
+                          <td className={cx('min-w-[110px] whitespace-normal break-words p-2 text-xs font-normal text-gray-300 sm:p-3', moving && 'hidden sm:table-cell')}>{remarkOf(g.rows) || <span className="text-gray-600">-</span>}</td>
                         </>
                       )}
                     </tr>
@@ -120,6 +132,7 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                       const orders = subRows.filter(isOrder);
                       return (
                         <tr key={sub} className="cursor-pointer bg-violet-950/20 text-xs hover:bg-violet-900/30" onClick={() => setDetail({ store: g.store, sub })}>
+                          {moving && <td />}
                           <td className="hidden p-2.5 pl-6 text-gray-500 sm:table-cell">↳</td>
                           <td className="p-2.5"><span className="flex items-center gap-1.5 font-semibold text-violet-200"><Store className="h-3 w-3 text-cyan-400" />{sub}</span></td>
                           <td className="hidden p-2.5 text-center sm:table-cell">{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
@@ -132,7 +145,7 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                           ) : (
                             <>
                               <td className="p-2.5 text-right font-bold text-emerald-400">{sums.items}개</td>
-                              <td className="min-w-[110px] whitespace-normal break-words p-2.5 text-gray-400">{remarkOf(subRows) || <span className="text-gray-600">-</span>}</td>
+                              <td className={cx('min-w-[110px] whitespace-normal break-words p-2.5 text-gray-400', moving && 'hidden sm:table-cell')}>{remarkOf(subRows) || <span className="text-gray-600">-</span>}</td>
                             </>
                           )}
                         </tr>
@@ -145,11 +158,12 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
             {!isCollection && groups.length > 0 && (
               <tfoot className="border-t-2 border-gray-700 bg-gray-800/60 text-xs font-bold text-gray-100">
                 <tr>
+                  {moving && <td />}
                   <td className="hidden p-3 sm:table-cell" />
                   <td className="p-2 sm:p-3">합계 <span className="font-normal text-gray-400">({groups.length}곳)</span></td>
                   <td className="hidden p-3 text-center sm:table-cell">{groups.reduce((n, g) => n + g.orderCount, 0)}건</td>
                   <td className="p-2 text-right text-sm text-emerald-300 sm:p-3">{groups.reduce((n, g) => n + g.itemCount, 0)}개</td>
-                  <td className="p-2 sm:p-3" />
+                  <td className={cx('p-2 sm:p-3', moving && 'hidden sm:table-cell')} />
                 </tr>
               </tfoot>
             )}

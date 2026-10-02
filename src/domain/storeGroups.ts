@@ -128,3 +128,30 @@ export function computeCarryOver(
   for (const [store, v] of total) if (v.amount !== 0) out.set(store, { amount: v.amount, region: v.region, manager: v.manager });
   return out;
 }
+
+/** 저장해 둔 거래처 순서대로 정렬한다. 순서에 없는 거래처는 기본 순서 그대로 뒤에 붙는다. */
+export function applyStoreOrder<T extends { store: string }>(groups: T[], order: string[] | undefined): T[] {
+  if (!order || order.length === 0) return groups;
+  const rank = new Map(order.map((name, i) => [name, i] as const));
+  return groups
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => (rank.get(a.g.store) ?? Infinity) - (rank.get(b.g.store) ?? Infinity) || a.i - b.i)
+    .map(x => x.g);
+}
+
+/**
+ * 화면에 보이는 거래처 목록(shown)에서 name 을 한 칸 위/아래로 옮긴 전체 순서를 돌려준다.
+ * 걸러져서 안 보이는 거래처의 순서는 그대로 두고, 저장된 순서에 없는 거래처는 보이는 순서대로 뒤에 붙인다.
+ */
+export function moveInOrder(saved: string[] | undefined, shown: string[], name: string, dir: -1 | 1): string[] {
+  const idx = shown.indexOf(name);
+  const target = shown[idx + dir];
+  if (idx < 0 || target === undefined) return saved ? [...saved] : [...shown];
+  const full = [...(saved || [])];
+  for (const n of shown) if (!full.includes(n)) full.push(n);
+  // 보이는 순서(shown)를 기준으로 name 과 이웃(target)의 자리를 바꾼다
+  const withoutName = full.filter(n => n !== name);
+  const at = withoutName.indexOf(target);
+  withoutName.splice(dir < 0 ? at : at + 1, 0, name);
+  return withoutName;
+}
