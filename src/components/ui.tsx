@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ChangeEvent, type CompositionEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Eye, EyeOff, Layers, Search, Store, X } from 'lucide-react';
-import { hangulToQwerty } from '../domain/keyboard';
+import { hangulToQwerty, sanitizeLoginId } from '../domain/keyboard';
 import type { GroupRule } from '../types';
 import { getStoreSuggestions } from '../domain/groups';
 import { useApp } from '../state/AppContext';
@@ -115,6 +115,47 @@ export const Textarea = ({ className, ...rest }: TextareaHTMLAttributes<HTMLText
 );
 
 /**
+ * 입력값을 바꿔 넣는 입력칸용. 한글 조합 중(IME)에 값을 바꿔 넣으면 글자가 여러 번 쳐지므로,
+ * 조합이 끝난 뒤에 한 번만 변환한다.
+ */
+function useImeSafeChange(transform: (v: string) => string, onChange: (v: string) => void) {
+  const composing = useRef(false);
+  return {
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      onChange(composing.current ? raw : transform(raw));
+    },
+    onCompositionStart: () => {
+      composing.current = true;
+    },
+    onCompositionEnd: (e: CompositionEvent<HTMLInputElement>) => {
+      composing.current = false;
+      onChange(transform(e.currentTarget.value));
+    },
+  };
+}
+
+/** 아이디(영문/숫자, 이메일 허용) 입력. 한글 자판 상태로 쳐도 영문으로 바꿔 넣는다. */
+export function LoginIdInput({
+  value, onChange, placeholder, autoComplete = 'username', required, noAt,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; autoComplete?: string; required?: boolean; noAt?: boolean }) {
+  const handlers = useImeSafeChange(v => (noAt ? sanitizeLoginId(v).replace(/@/g, '') : sanitizeLoginId(v)), onChange);
+  return (
+    <input
+      {...handlers}
+      required={required}
+      autoComplete={autoComplete}
+      autoCapitalize="none"
+      autoCorrect="off"
+      spellCheck={false}
+      value={value}
+      placeholder={placeholder}
+      className={inputClass}
+    />
+  );
+}
+
+/**
  * 비밀번호 입력 (눈 아이콘으로 입력한 글자 확인).
  * 한글 자판 상태로 쳐도 같은 자리의 영문으로 바꿔 넣는다 (예: ㅁㅇㅡㅑㅜ → admin). 글자를 몰래 지우지 않는다.
  */
@@ -122,6 +163,7 @@ export function PasswordInput({
   value, onChange, placeholder, autoComplete = 'current-password', required,
 }: { value: string; onChange: (v: string) => void; placeholder?: string; autoComplete?: string; required?: boolean }) {
   const [show, setShow] = useState(false);
+  const handlers = useImeSafeChange(hangulToQwerty, onChange);
   return (
     <div className="relative">
       <input
@@ -132,7 +174,7 @@ export function PasswordInput({
         autoCorrect="off"
         spellCheck={false}
         value={value}
-        onChange={e => onChange(hangulToQwerty(e.target.value))}
+        {...handlers}
         placeholder={placeholder}
         className={cx(inputClass, 'pr-11')}
       />

@@ -3,11 +3,10 @@ import { ArrowLeft, ShieldPlus } from 'lucide-react';
 import type { UserRole } from '../types';
 import { sendPasswordReset, signIn, signUp } from '../data/users';
 import * as cache from '../data/localCache';
-import { sanitizeLoginId } from '../domain/keyboard';
 import { uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { AdminCreateModal } from '../modals/AdminCreateModal';
-import { Button, Field, Input, PasswordInput, Select, cx } from '../components/ui';
+import { Button, Field, Input, LoginIdInput, PasswordInput, Select, cx } from '../components/ui';
 import { Logo } from '../components/Logo';
 
 type Mode = 'login' | 'register' | 'reset';
@@ -154,7 +153,7 @@ export function AuthScreen() {
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
               <Field label="아이디 (또는 이메일)" hint="이 기기에서 처음 로그인하면 가입할 때 쓴 이메일 주소로 로그인해 주세요.">
-                <Input required autoComplete="username" value={loginId} onChange={e => setLoginId(sanitizeLoginId(e.target.value))} placeholder="아이디를 입력하세요" />
+                <LoginIdInput required value={loginId} onChange={setLoginId} placeholder="아이디 또는 이메일" />
               </Field>
               <Field label="비밀번호">
                 <PasswordInput required value={password} onChange={setPassword} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
@@ -204,7 +203,7 @@ export function AuthScreen() {
                 <Input type="email" required autoComplete="email" value={reg.email} onChange={e => setRegField('email')(e.target.value.trim())} placeholder="name@example.com" />
               </Field>
               <Field label="아이디 (영문/숫자)" hint="비워 두면 이메일 앞부분이 아이디가 됩니다.">
-                <Input autoComplete="username" value={reg.username} onChange={e => setRegField('username')(sanitizeLoginId(e.target.value).replace(/[@]/g, ''))} placeholder="로그인에 사용할 아이디" />
+                <LoginIdInput noAt value={reg.username} onChange={setRegField('username')} placeholder="로그인에 사용할 아이디" />
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="이름 / 대표자명 *">
