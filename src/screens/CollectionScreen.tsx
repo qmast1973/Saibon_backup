@@ -7,7 +7,7 @@ import { formatMoney } from '../domain/format';
 import { getBillingStore, getSubStores, matchesTransaction } from '../domain/groups';
 import { isFeeCharged, isOrder, isReceivable, splitAmounts, toggleFeeCharged } from '../domain/ledger';
 import { DEPOSIT_MARKET } from '../domain/markets';
-import { buildStoreGroups, type StoreGroup } from '../domain/storeGroups';
+import { buildStoreGroups, computeCarryOver, type CarryOver, type StoreGroup } from '../domain/storeGroups';
 import { compact, fuzzyIncludes, uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { StoreGroupTable } from '../components/StoreGroupTable';
@@ -28,7 +28,20 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
   const dayRows = useMemo(() => visibleOrders.filter(t => t.date === nav.date && !isReceivable(t)), [visibleOrders, nav.date]);
   const buyerOf = (t: Transaction) => String(t.actualManager || t.manager || '').trim() || '미지정';
 
-  const allGroups = useMemo(() => buildStoreGroups(dayRows, { mode: 'collection', rules, users, includeFee }), [dayRows, rules, users, includeFee]);
+  // 이전 날짜에서 못 받은 금액은 다음 날 수금 화면에 같이 넘어온다
+  const carry = useMemo(
+    () => computeCarryOver(visibleOrders, nav.date, { rules, users, includeFee }),
+    [visibleOrders, nav.date, rules, users, includeFee],
+  );
+  const allGroups = useMemo(() => buildStoreGroups(dayRows, { mode: 'collection', rules, users, includeFee, carry }), [dayRows, rules, users, includeFee, carry]);
+
+  // 필터가 걸려 있으면 그 조건에 맞는 거래처의 이월만 보여 준다 (이월 거래처는 오늘 주문이 없어 담당·처리 상태를 알 수 없다)
+  const shownCarry = useMemo<CarryOver>(() => {
+    if (buyer || status === '미처리' || status === '완료') return new Map();
+    const q = storeQuery.trim();
+    if (!q) return carry;
+    return new Map([...carry].filter(([store]) => fuzzyIncludes(store, q) || getSubStores(store, rules).some(sub => fuzzyIncludes(sub, q))));
+  }, [carry, buyer, status, storeQuery, rules]);
 
   const filteredRows = useMemo(
     () =>
@@ -45,7 +58,10 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
       }),
     [dayRows, storeQuery, buyer, status, rules],
   );
-  const groups = useMemo(() => buildStoreGroups(filteredRows, { mode: 'collection', rules, users, includeFee }), [filteredRows, rules, users, includeFee]);
+  const groups = useMemo(
+    () => buildStoreGroups(filteredRows, { mode: 'collection', rules, users, includeFee, carry: shownCarry }),
+    [filteredRows, rules, users, includeFee, shownCarry],
+  );
 
   const totals = useMemo(() => {
     const orders = dayRows.filter(isOrder);
@@ -54,6 +70,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
       orders: orders.length,
       completed: orders.filter(isFeeCharged).length,
       unprocessed: orders.filter(t => !isFeeCharged(t)).length,
+      carry: allGroups.reduce((s, g) => s + g.carry, 0),
     };
   }, [dayRows, allGroups]);
 
@@ -84,14 +101,15 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
         </>
       }
     >
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
-          ['총 청구액', formatMoney(totals.billed), 'text-rose-400'],
+          ['이월 미수금 (전날까지)', formatMoney(totals.carry), totals.carry > 0 ? 'text-sky-300' : 'text-gray-500'],
+          ['오늘 청구액', formatMoney(totals.billed), 'text-rose-400'],
           ['총 주문', `${totals.orders}건`, 'text-gray-100'],
           ['완료(사입비 부과)', `${totals.completed}건`, 'text-emerald-400'],
           ['미처리', `${totals.unprocessed}건`, 'text-amber-400'],
         ].map(([label, value, tone]) => (
-          <div key={label} className="rounded-xl border border-gray-800 bg-gray-900 p-2.5">
+          <div key={label} className={cx('rounded-xl border border-gray-800 bg-gray-900 p-2.5', label.startsWith('이월') && 'col-span-2 sm:col-span-1')}>
             <p className="text-[10px] font-semibold text-gray-400">{label}</p>
             <p className={cx('mt-0.5 font-mono text-base font-bold', tone)}>{value}</p>
           </div>
@@ -210,7 +228,8 @@ function CollectionEntryModal({
           <div>
             <p className="text-sm font-bold text-gray-100">{store || '거래처를 선택하세요'}</p>
             <p className="mt-0.5 text-[11px] text-indigo-300">
-              미수금 잔액 {group && <Badge className="ml-1 bg-emerald-900 text-emerald-200">완료 {group.completedCount}건</Badge>}
+              미수금 잔액 {group && group.carry > 0 && <Badge className="ml-1 bg-sky-900 text-sky-200">이월 {formatMoney(group.carry)} 포함</Badge>}
+              {group && group.completedCount > 0 && <Badge className="ml-1 bg-emerald-900 text-emerald-200">완료 {group.completedCount}건</Badge>}
               {subs.length > 0 && <Badge className="ml-1 bg-violet-900 text-violet-200">종속 {subs.length}곳 포함</Badge>}
             </p>
           </div>
