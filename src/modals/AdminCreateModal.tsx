@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { createEmailAccountForOther, fetchUsers, isPermissionDenied, sha256, userKey } from '../data/users';
-import { sanitizeLoginId } from '../domain/keyboard';
 import { useApp } from '../state/AppContext';
-import { Button, Field, Input, Modal, PasswordInput } from '../components/ui';
+import { Button, Field, Input, LoginIdInput, Modal, PasswordInput } from '../components/ui';
 
 /**
  * 관리자 계정 추가.
@@ -77,7 +76,7 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
         {needAuth && (
           <div className="space-y-2 rounded-xl border border-gray-800 bg-gray-950 p-3">
             <p className="text-[11px] text-gray-400">기존 관리자 인증</p>
-            <Input value={form.authId} onChange={e => set('authId')(sanitizeLoginId(e.target.value))} placeholder="기존 관리자 아이디" autoComplete="off" />
+            <LoginIdInput value={form.authId} onChange={set('authId')} placeholder="기존 관리자 아이디" autoComplete="off" />
             <PasswordInput value={form.authPw} onChange={set('authPw')} placeholder="기존 관리자 비밀번호" autoComplete="off" />
           </div>
         )}
@@ -86,7 +85,7 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
           <Field label="이메일 *"><Input type="email" required value={form.email} onChange={e => set('email')(e.target.value)} placeholder="로그인에 쓸 이메일" /></Field>
           <Field label="전화번호"><Input type="tel" value={form.phone} onChange={e => set('phone')(e.target.value)} placeholder="선택" /></Field>
         </div>
-        <Field label="아이디 * (영문/숫자 4자 이상)"><Input required value={form.id} onChange={e => set('id')(sanitizeLoginId(e.target.value).replace('@', ''))} autoComplete="off" /></Field>
+        <Field label="아이디 * (영문/숫자 4자 이상)"><LoginIdInput required noAt value={form.id} onChange={set('id')} autoComplete="off" /></Field>
         <div className="grid grid-cols-2 gap-2">
           <Field label="비밀번호 *"><PasswordInput required value={form.pw} onChange={set('pw')} autoComplete="new-password" /></Field>
           <Field label="비밀번호 확인 *"><PasswordInput required value={form.pw2} onChange={set('pw2')} autoComplete="new-password" /></Field>
