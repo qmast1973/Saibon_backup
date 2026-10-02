@@ -1,5 +1,6 @@
 import type { GroupRule, Transaction, User } from '../types';
 import { getBillingStore, getMonthlyPurchase } from './groups';
+import { DEFAULT_MARKETS, normalizeMarket } from './markets';
 import { FEE_PER_ORDER, hasStatus, isFeeCharged, isOrder, isReceivable, splitAmounts } from './ledger';
 import { sortKo } from './text';
 
@@ -24,6 +25,23 @@ export interface StoreGroup {
 
 export type GroupMode = 'collection' | 'stats';
 
+/** 건물 이름으로 쓰이는 값들 (기본 건물 목록 + 설정의 건물 목록 + 주문에 적힌 건물명) */
+function buildingSet(rows: Transaction[], markets?: string[]): Set<string> {
+  return new Set([...DEFAULT_MARKETS, ...(markets || []), ...rows.map(t => t.market || '')].filter(Boolean).map(m => normalizeMarket(m)));
+}
+
+/** 주문 한 건의 지역 표시값 (건물 이름이 들어 있으면 빈 값). 목록 줄마다 쓰는 가벼운 버전. */
+export const regionLabel = (t: Pick<Transaction, 'region' | 'market'>, markets?: string[]) => cleanRegion(t.region, buildingSet([t as Transaction], markets));
+
+/**
+ * 지역 칸에 보여 줄 값. 합성동 · 창원 같은 지역만 남기고, 비어 있거나 '미지정', 또는 건물 이름(서울 상가)이 들어가 있으면 빈 값으로 둔다.
+ */
+export function cleanRegion(region: string | undefined, buildings: Set<string>): string {
+  const r = String(region || '').trim();
+  if (!r || r === '미지정') return '';
+  return buildings.has(normalizeMarket(r)) ? '' : r;
+}
+
 /** 거래처(대표 기준)별 이월 미수금과, 그 거래처의 가장 최근 지역 · 담당 */
 export type CarryOver = Map<string, { amount: number; region: string; manager: string }>;
 
@@ -33,9 +51,10 @@ export type CarryOver = Map<string, { amount: number; region: string; manager: s
  */
 export function buildStoreGroups(
   rows: Transaction[],
-  opts: { mode: GroupMode; rules: GroupRule[]; users: User[]; includeFee: boolean; carry?: CarryOver },
+  opts: { mode: GroupMode; rules: GroupRule[]; users: User[]; includeFee: boolean; carry?: CarryOver; markets?: string[] },
 ): StoreGroup[] {
   const map = new Map<string, StoreGroup>();
+  const buildings = buildingSet(rows, opts.markets);
   for (const t of rows) {
     const key = getBillingStore(String(t.store || '미지정').trim() || '미지정', opts.rules);
     let g = map.get(key);
@@ -43,7 +62,7 @@ export function buildStoreGroups(
       const monthly = getMonthlyPurchase(key, opts.rules, opts.users);
       g = {
         store: key,
-        region: String(t.region || '').trim() || '미지정',
+        region: '',
         manager: opts.mode === 'collection'
           ? String(t.localManager || t.manager || '').trim() || '미지정'
           : t.actualManager || t.assignedManager || t.manager || '미배정',
@@ -56,6 +75,7 @@ export function buildStoreGroups(
       map.set(key, g);
     }
     g.rows.push(t);
+    if (!g.region) g.region = cleanRegion(t.region, buildings);
     // 물건 갯수는 처리된 주문만 센다 (카드의 갯수 합계와 같은 기준이어야 표와 카드가 맞는다)
     if (isOrder(t) && hasStatus(t)) g.itemCount += Number(t.itemCount) || 0;
 
@@ -88,7 +108,7 @@ export function buildStoreGroups(
     g.fee = opts.mode === 'collection' && opts.includeFee && !g.isMonthly ? g.completedCount * FEE_PER_ORDER : 0;
     g.balance = g.carry + g.billed + g.fee - g.paid; // 더 받았으면 음수(-)
   }
-  return [...map.values()].sort((a, b) => (opts.mode === 'collection' ? sortKo(a.region, b.region) : 0) || sortKo(a.store, b.store));
+  return [...map.values()].sort((a, b) => (opts.mode === 'collection' ? Number(!a.region) - Number(!b.region) || sortKo(a.region, b.region) : 0) || sortKo(a.store, b.store));
 }
 
 /**
@@ -99,7 +119,7 @@ export function buildStoreGroups(
 export function computeCarryOver(
   rows: Transaction[],
   beforeDate: string,
-  opts: { rules: GroupRule[]; users: User[]; includeFee: boolean },
+  opts: { rules: GroupRule[]; users: User[]; includeFee: boolean; markets?: string[] },
 ): CarryOver {
   const byDate = new Map<string, Transaction[]>();
   for (const t of rows) {

@@ -97,7 +97,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                             </button>
                           )}
                         </span>
-                        <span className={cx('mt-0.5 block text-[10px] font-normal text-gray-500', isCollection && 'sm:hidden')}>{isCollection ? g.region : g.rows[0]?.market || ''} · {g.orderCount}건</span>
+                        <span className={cx('mt-0.5 block text-[10px] font-normal text-gray-500', isCollection && 'sm:hidden')}>{[isCollection ? g.region : g.rows[0]?.market || '', `${g.orderCount}건`].filter(Boolean).join(' · ')}</span>
                       </td>
                       <td className="hidden p-3 text-center sm:table-cell">
                         <b className="text-gray-100">{g.orderCount}건</b>

@@ -8,6 +8,7 @@ import { formatLocation, formatMoney } from '../domain/format';
 import { getBillingStore, getMerchantBundle, getSubStores, matchesTransaction, sortByStoreFocus } from '../domain/groups';
 import { hasStatus, isReceivable, splitAmounts } from '../domain/ledger';
 import { compact, fuzzyIncludes, uniqueSorted } from '../domain/text';
+import { regionLabel } from '../domain/storeGroups';
 import { useOlderOrders } from '../hooks/useOlderOrders';
 import { useApp } from '../state/AppContext';
 import { Badge, Button, ConfirmDialog, EmptyState, StoreSearch, cx } from '../components/ui';
@@ -358,6 +359,7 @@ function DayOrderCard({
 }) {
   const done = hasStatus(t);
   const isSub = billing && compact(billing) !== compact(t.store);
+  const { markets } = useApp();
   return (
     <div className={cx('flex flex-col gap-1.5 rounded-xl border p-2.5 text-xs', done ? 'border-emerald-900 bg-emerald-950/30' : 'border-gray-800 bg-gray-950', focused && 'ring-2 ring-violet-500/60')}>
       <div className="flex items-start justify-between gap-2">
@@ -381,7 +383,7 @@ function DayOrderCard({
       </div>
       <p className="text-[11px] text-gray-400">
         <b className="text-gray-200">{formatLocation(t) || '-'}</b>
-        {t.region && <span className="text-gray-500"> · {t.region}</span>}
+        {regionLabel(t, markets) && <span className="text-gray-500"> · {regionLabel(t, markets)}</span>}
       </p>
       <div className="flex justify-between border-t border-gray-800 pt-1 font-semibold">
         <span className="text-rose-400">대납 {formatMoney(t.expense)}</span>
