@@ -44,7 +44,8 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
   const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => Promise<void> } | null>(null);
   const [excelRows, setExcelRows] = useState<ExcelRow[] | null>(null);
   // 미리보기(데모)는 서버에 접속하지 않으므로 화면에 있는 주문으로 대신한다
-  const loadAll = () => (IS_DEMO ? Promise.resolve({ orders, empties: [] }) : fetchAllOrders());
+  const loadAll = (label = '') =>
+    IS_DEMO ? Promise.resolve({ orders, empties: [] }) : fetchAllOrders(label ? (done, total) => setBusy(`${label} (${done}/${total}개월)`) : undefined);
 
   const task = async (label: string, fn: () => Promise<void>) => {
     setBusy(label);
@@ -66,14 +67,14 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
 
   const exportExcel = () =>
     task('엑셀 내보내기', async () => {
-      const { orders: all } = await loadAll().catch(() => ({ orders }));
+      const { orders: all } = await loadAll('엑셀 내보내기').catch(() => ({ orders }));
       if (all.length === 0) throw new Error('내보낼 데이터가 없습니다.');
       await exportLedger(all);
     });
 
   const backup = () =>
     task('백업', async () => {
-      const { orders: all } = await loadAll();
+      const { orders: all } = await loadAll('백업');
       const payload = {
         format: BACKUP_FORMAT,
         version: 3,
@@ -107,7 +108,7 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
 
   const dedupe = () =>
     task('중복 정리', async () => {
-      const { orders: all, empties } = await loadAll();
+      const { orders: all, empties } = await loadAll('중복 정리');
       const { removed } = dedupeTransactions(all);
       const targets = [...removed, ...empties];
       if (targets.length === 0) {
