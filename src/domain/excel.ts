@@ -39,12 +39,12 @@ const COLUMNS: Record<keyof ExcelRow, { keys: string[]; fallback: number }> = {
  * 엑셀 원장을 읽는다. 첫 10줄 중 제목 키워드가 가장 많은 줄을 머리글로 보고,
  * 날짜·담당·지역이 비어 있는 행은 윗 행 값을 이어받는다 (병합 셀 대응).
  */
-export async function readLedgerExcel(file: File, defaultDate: string): Promise<ExcelRow[]> {
+export async function readLedgerExcel(file: File, defaultDate: string): Promise<{ rows: ExcelRow[]; convertedFromWon: boolean }> {
   const XLSX = await loadXlsx();
   const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: 'array' });
   const sheetName = workbook.SheetNames.find(n => /주문|사입|원장|내역|Sheet1|data/i.test(n)) || workbook.SheetNames[0];
   const grid = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: '' });
-  if (grid.length < 2) return [];
+  if (grid.length < 2) return { rows: [], convertedFromWon: false };
 
   let headerRow = 0;
   let best = -1;
@@ -88,7 +88,19 @@ export async function readLedgerExcel(file: File, defaultDate: string): Promise<
     };
     if (parsed.store || parsed.expense || parsed.income) rows.push(parsed);
   }
-  return rows;
+  return toThousandUnit(rows);
+}
+
+/**
+ * 앱은 금액을 천원 단위로 저장한다 (35 = 35,000원). 엑셀에 원 단위(35000)로 적혀 있으면 그대로 넣을 때 1000배로 불어나므로,
+ * 0이 아닌 금액의 80% 이상이 1,000 이상이면 원 단위 파일로 보고 1000으로 나눈다. (이 앱이 내보낸 엑셀도 원 단위)
+ */
+export function toThousandUnit(rows: ExcelRow[]): { rows: ExcelRow[]; convertedFromWon: boolean } {
+  const amounts = rows.flatMap(r => [r.expense, r.income]).filter(v => v !== 0).map(Math.abs);
+  const won = amounts.length > 0 && amounts.filter(v => v >= 1000).length / amounts.length >= 0.8;
+  if (!won) return { rows, convertedFromWon: false };
+  const div = (v: number) => Math.round((v / 1000) * 1000) / 1000;
+  return { rows: rows.map(r => ({ ...r, expense: div(r.expense), income: div(r.income) })), convertedFromWon: true };
 }
 
 export const isReceivableRow = (r: ExcelRow) => [r.market, r.status, r.remark].some(v => v.includes('미수금'));
