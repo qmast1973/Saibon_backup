@@ -19,7 +19,7 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
   const { user: me, users, saveUser, removeUserLocal, notify } = useApp();
   const admin = isAdmin(me);
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
-  const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ username: string; email?: string; password: string } | null>(null);
   const [onlyPending, setOnlyPending] = useState(false);
 
   const visible = (admin ? users : users.filter(u => u.role === 'buyer')).filter(u => !onlyPending || !u.approved);
@@ -29,7 +29,7 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
   const resetPassword = async (u: User) => {
     const password = makeTempPassword();
     await saveUser({ ...u, passwordHash: await sha256(password) });
-    setTempPassword({ username: u.username, password });
+    setTempPassword({ username: u.username, email: u.email, password });
   };
 
   const remove = (u: User) => {
@@ -70,7 +70,7 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
                       <div className="min-w-0 text-xs">
                         <p className="flex flex-wrap items-center gap-1.5">
                           <b className="text-sm text-gray-100">{u.name}</b>
-                          <span className="text-gray-500">@{u.username}</span>
+                          <span className="text-gray-500">{u.nickname ? `@${u.nickname}` : u.email || `@${u.username}`}</span>
                           {u.storeName && <Badge className="bg-emerald-900/60 text-emerald-200">{u.storeName}</Badge>}
                           {u.isBuyerAdmin && <Badge className="bg-indigo-900 text-indigo-200">서브관리자</Badge>}
                           {u.isMonthlyPurchase && <Badge className="bg-teal-900 text-teal-200">월사입 {(u.monthlyPurchaseAmount || 0).toLocaleString()}원</Badge>}
@@ -114,7 +114,7 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
       {confirmDelete && (
         <ConfirmDialog
           title="회원 삭제"
-          message={`${confirmDelete.name} (@${confirmDelete.username}) 계정을 삭제할까요?\n주문 기록은 그대로 남습니다.`}
+          message={`${confirmDelete.name} (${confirmDelete.nickname || confirmDelete.email || confirmDelete.username}) 계정을 삭제할까요?\n주문 기록은 그대로 남습니다.`}
           confirmLabel="삭제"
           onCancel={() => setConfirmDelete(null)}
           onConfirm={() => {
@@ -132,7 +132,7 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
             임시 비밀번호는 이 앱의 비밀번호만 바꿉니다. 이메일 로그인 비밀번호는 그대로라서, 그 기기에서 처음 로그인하는 경우엔 서버 접속이 안 될 수 있습니다. 이메일이 있는 회원은 '재설정 메일'을 쓰는 게 확실합니다.
           </p>
           <div className="mt-3 space-y-1 rounded-xl border border-gray-700 bg-gray-950 p-3 font-mono text-sm">
-            <p>아이디: <b className="text-white">{tempPassword.username}</b></p>
+            <p>이메일: <b className="text-white">{tempPassword.email || tempPassword.username}</b></p>
             <p>임시 비밀번호: <b className="select-all text-amber-300">{tempPassword.password}</b></p>
           </div>
         </Modal>
