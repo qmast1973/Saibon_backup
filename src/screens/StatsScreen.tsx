@@ -22,6 +22,7 @@ const TONES: Record<string, string> = {
   pink: 'border-pink-700 bg-pink-950/60 text-pink-300',
   fuchsia: 'border-fuchsia-700 bg-fuchsia-950/60 text-fuchsia-300',
   purple: 'border-purple-700 bg-purple-950/60 text-purple-300',
+  sky: 'border-sky-700 bg-sky-950/60 text-sky-300',
 };
 
 /** 갯수 집계: 처리 상태별 건수와 거래처별 물건 갯수 */
@@ -60,11 +61,11 @@ export function StatsScreen({ nav }: { nav: Nav }) {
           <span>범위: <b className="text-white">{f.building || '전체 건물'}{f.floor && ` ${f.floor}층`}</b> · 목록 <b className="text-yellow-300">{list.length}</b>건</span>
           <span>대납 합계 <b className="text-sm text-rose-400">{formatMoney(totalExpense)}</b></span>
         </div>
-        <div className="grid grid-cols-3 gap-1.5 text-center sm:grid-cols-4 md:grid-cols-6">
+        <div className="grid grid-cols-4 gap-1 text-center sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9">
           {cards.map(c => (
-            <button key={c.key} type="button" onClick={() => setFilter(c.key)} className={cx('rounded-lg border px-0.5 py-1.5 transition', TONES[c.tone], filter === c.key ? 'ring-2 ring-white/40' : 'opacity-70 hover:opacity-100')}>
-              <span className="block text-[10px] font-semibold tracking-tight">{c.label}</span>
-              <span className="text-base font-black">{c.value}<small className="ml-0.5 text-[10px] font-normal">{c.unit}</small></span>
+            <button key={c.key} type="button" onClick={() => setFilter(c.key)} className={cx('min-h-[44px] rounded-md border px-0.5 py-1 transition', TONES[c.tone], filter === c.key ? 'ring-2 ring-white/40' : 'opacity-70 hover:opacity-100')}>
+              <span className="block text-[9px] font-semibold leading-tight tracking-tight">{c.label}</span>
+              <span className="text-sm font-black">{c.value}<small className="ml-0.5 text-[9px] font-normal">{c.unit}</small></span>
             </button>
           ))}
         </div>
