@@ -31,13 +31,11 @@ export function StatsScreen({ nav }: { nav: Nav }) {
   const [filter, setFilter] = useState('all');
 
   const cards = useMemo(() => {
-    const list = STAT_FILTERS.map(s => ({ key: s.key, label: s.label, unit: s.unit, tone: s.tone, value: f.scoped.filter(s.test).length }));
-    list.splice(3, 0, { key: 'items', label: '물건 갯수합계', unit: '개', tone: 'cyan', value: totalItemCount(f.scoped) });
-    return list;
+    return STAT_FILTERS.map(s => ({ key: s.key, label: s.label, unit: s.unit, tone: s.tone, value: f.scoped.filter(s.test).length }));
   }, [f.scoped]);
+  const itemTotal = useMemo(() => totalItemCount(f.scoped), [f.scoped]);
 
   const list = useMemo(() => {
-    if (filter === 'items') return f.scoped.filter(t => (Number(t.itemCount) || 0) !== 0);
     const test = STAT_FILTERS.find(s => s.key === filter)?.test ?? (() => true);
     return f.scoped.filter(test);
   }, [f.scoped, filter]);
@@ -57,6 +55,7 @@ export function StatsScreen({ nav }: { nav: Nav }) {
       <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-2 text-xs text-gray-400">
           <span>범위: <b className="text-white">{f.building || '전체 건물'}{f.floor && ` ${f.floor}층`}</b> · 목록 <b className="text-yellow-300">{list.length}</b>건</span>
+          <span>물건 갯수 합계 <b className="text-sm text-cyan-300">{itemTotal}개</b></span>
         </div>
         <div className="grid grid-cols-4 gap-1 text-center sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9">
           {cards.map(c => (
