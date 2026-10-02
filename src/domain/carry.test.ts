@@ -35,9 +35,23 @@ describe('이월 미수금', () => {
     expect(computeCarryOver(rows, '2026-10-02', opts).get('상호A')?.amount).toBe(25);
   });
 
-  it('다 받았거나 더 받은 거래처는 넘어오지 않는다', () => {
-    const rows = [order('2026-10-01', '상호A', 10), deposit('2026-10-01', '상호A', 10), order('2026-10-01', '상호B', 10), deposit('2026-10-01', '상호B', 30)];
+  it('딱 맞게 다 받은 거래처는 넘어오지 않는다', () => {
+    const rows = [order('2026-10-01', '상호A', 10), deposit('2026-10-01', '상호A', 10)];
     expect(computeCarryOver(rows, '2026-10-02', opts).size).toBe(0);
+  });
+
+  it('더 받은 거래처는 음수(-)로 넘어온다', () => {
+    const rows = [order('2026-10-01', '상호B', 10), deposit('2026-10-01', '상호B', 30)];
+    expect(computeCarryOver(rows, '2026-10-02', opts).get('상호B')?.amount).toBe(-20);
+  });
+
+  it('초과 입금하면 미수금이 음수(-)로 표시되고, 다음 청구에서 빠진다', () => {
+    const group = buildStoreGroups([order('2026-10-02', '상호A', 10), deposit('2026-10-02', '상호A', 25)], { mode: 'collection', ...opts });
+    expect(group[0].balance).toBe(-15);
+
+    const carry = computeCarryOver([order('2026-10-01', '상호A', 10), deposit('2026-10-01', '상호A', 25)], '2026-10-02', opts);
+    const next = buildStoreGroups([order('2026-10-02', '상호A', 20)], { mode: 'collection', ...opts, carry });
+    expect(next[0]).toMatchObject({ carry: -15, balance: 5 });
   });
 
   it('대표거래처로 묶인 상호는 한 거래처로 합산한다', () => {
