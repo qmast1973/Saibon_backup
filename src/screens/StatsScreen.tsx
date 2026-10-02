@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import type { Nav } from '../App';
 import { exportWorkday } from '../domain/excel';
-import { formatMoney } from '../domain/format';
 import { STAT_FILTERS, totalItemCount } from '../domain/ledger';
 import { buildStoreGroups } from '../domain/storeGroups';
 import { useApp } from '../state/AppContext';
@@ -44,7 +43,6 @@ export function StatsScreen({ nav }: { nav: Nav }) {
   }, [f.scoped, filter]);
 
   const groups = useMemo(() => buildStoreGroups(list, { mode: 'stats', rules, users, includeFee }), [list, rules, users, includeFee]);
-  const totalExpense = useMemo(() => f.scoped.reduce((s, t) => s + (Number(t.expense) || 0), 0), [f.scoped]);
 
   return (
     <Screen
@@ -59,7 +57,6 @@ export function StatsScreen({ nav }: { nav: Nav }) {
       <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-2 text-xs text-gray-400">
           <span>범위: <b className="text-white">{f.building || '전체 건물'}{f.floor && ` ${f.floor}층`}</b> · 목록 <b className="text-yellow-300">{list.length}</b>건</span>
-          <span>대납 합계 <b className="text-sm text-rose-400">{formatMoney(totalExpense)}</b></span>
         </div>
         <div className="grid grid-cols-4 gap-1 text-center sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9">
           {cards.map(c => (
