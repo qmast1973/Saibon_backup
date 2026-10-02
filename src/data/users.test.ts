@@ -36,7 +36,7 @@ vi.mock('firebase/auth', () => ({
   updateProfile: vi.fn(),
 }));
 
-const { signIn, sha256 } = await import('./users');
+const { signIn, sha256, emailKey, freeKey, nicknameTaken } = await import('./users');
 
 beforeEach(async () => {
   state.signedIn = false;
@@ -73,5 +73,27 @@ describe('로그인 (DB가 이메일 로그인 상태에서만 열리는 경우)
     expect(user.username).not.toBe('boss');
     expect(user).toMatchObject({ role: 'merchant', approved: false });
     expect(state.writes.map(w => w.path)).toEqual([`users/${user.username}`]);
+  });
+});
+
+describe('닉네임 · 내부 키', () => {
+  const u = (username: string, nickname?: string) => ({ username, nickname, name: username, role: 'merchant' as const, approved: true });
+
+  it('내부 키는 이메일 앞부분으로 만들고 키에 쓸 수 없는 문자는 뺀다', () => {
+    expect(emailKey('Boss.Kim+1@Example.com')).toBe('bosskim1');
+    expect(emailKey('@x.com')).toBe('user');
+  });
+
+  it('이미 쓰는 키면 뒤에 번호를 붙인다', () => {
+    expect(freeKey('boss', [u('boss'), u('boss2')])).toBe('boss3');
+    expect(freeKey('boss', [])).toBe('boss');
+  });
+
+  it('닉네임 중복은 대소문자 · 공백을 무시하고, 본인은 제외한다', () => {
+    const users = [u('a1', '김 사장'), u('b2')];
+    expect(nicknameTaken(users, '김사장')).toBe(true);
+    expect(nicknameTaken(users, 'B2')).toBe(true); // 닉네임이 없는 예전 회원은 내부 키와 비교
+    expect(nicknameTaken(users, '김사장', 'a1')).toBe(false);
+    expect(nicknameTaken(users, '새닉네임')).toBe(false);
   });
 });

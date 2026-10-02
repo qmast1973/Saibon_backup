@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ChangeEvent, type CompositionEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Eye, EyeOff, Layers, Search, Store, X } from 'lucide-react';
-import { hangulToQwerty, sanitizeLoginId } from '../domain/keyboard';
+import { hangulToQwerty, sanitizeEmail, sanitizeLoginId } from '../domain/keyboard';
 import type { GroupRule } from '../types';
 import { getStoreSuggestions } from '../domain/groups';
 import { useApp } from '../state/AppContext';
@@ -135,14 +135,16 @@ function useImeSafeChange(transform: (v: string) => string, onChange: (v: string
   };
 }
 
-/** 아이디(영문/숫자, 이메일 허용) 입력. 한글 자판 상태로 쳐도 영문으로 바꿔 넣는다. */
+/** 이메일 · 아이디 입력 (email 이면 이메일 형식). 한글 자판 상태로 쳐도 영문으로 바꿔 넣는다. */
 export function LoginIdInput({
-  value, onChange, placeholder, autoComplete = 'username', required, noAt,
-}: { value: string; onChange: (v: string) => void; placeholder?: string; autoComplete?: string; required?: boolean; noAt?: boolean }) {
-  const handlers = useImeSafeChange(v => (noAt ? sanitizeLoginId(v).replace(/@/g, '') : sanitizeLoginId(v)), onChange);
+  value, onChange, placeholder, autoComplete = 'username', required, noAt, email,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; autoComplete?: string; required?: boolean; noAt?: boolean; email?: boolean }) {
+  const handlers = useImeSafeChange(v => (email ? sanitizeEmail(v) : noAt ? sanitizeLoginId(v).replace(/@/g, '') : sanitizeLoginId(v)), onChange);
   return (
     <input
       {...handlers}
+      type={email ? 'email' : 'text'}
+      inputMode={email ? 'email' : undefined}
       required={required}
       autoComplete={autoComplete}
       autoCapitalize="none"

@@ -23,5 +23,8 @@ export function hangulToQwerty(text: string): string {
   return out;
 }
 
+/** 이메일 입력값: 한글 자판 입력을 영문으로 바꾸고 이메일에 쓰는 문자만 남긴다 */
+export const sanitizeEmail = (text: string) => hangulToQwerty(text).replace(/[^a-zA-Z0-9@._+-]/g, '');
+
 /** 아이디 입력값: 한글 자판 입력을 영문으로 바꾸고 허용 문자만 남긴다 (이메일 로그인 허용) */
 export const sanitizeLoginId = (text: string) => hangulToQwerty(text).replace(/[^a-zA-Z0-9@._-]/g, '');

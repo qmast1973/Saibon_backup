@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { UserPen } from 'lucide-react';
 import type { UserRole } from '../types';
-import { changeOwnFirebasePassword, ROLE_LABEL, sha256, userKey } from '../data/users';
+import { changeOwnFirebasePassword, nicknameTaken, ROLE_LABEL, sha256, userKey } from '../data/users';
 import { hasAdminAccess, isAdmin } from '../domain/access';
 import { MARKET_SEPARATOR_RE, NON_BUILDING_MARKETS, normalizeMarket } from '../domain/markets';
 import { uniqueSorted } from '../domain/text';
@@ -18,6 +18,7 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
 
   const [form, setForm] = useState(() => ({
     role: target?.role || ('merchant' as UserRole),
+    nickname: target?.nickname || '',
     name: target?.name || '',
     email: target?.email || '',
     phone: target?.phone || '',
@@ -66,6 +67,9 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
     e.preventDefault();
     const role = editingOther && admin ? form.role : target.role;
     if (!form.name.trim()) return notify('이름을 입력해주세요.', 'error');
+    const nickname = form.nickname.trim();
+    if (nickname && (nickname.length < 2 || nickname.length > 12)) return notify('닉네임은 2~12자로 입력해주세요.', 'error');
+    if (nickname && nicknameTaken(users, nickname, target.username)) return notify('이미 사용 중인 닉네임입니다.', 'error');
     if (role === 'merchant' && !form.storeName.trim()) return notify('상호를 입력해주세요.', 'error');
     if (role === 'local' && !form.region.trim()) return notify('담당 지역을 선택해주세요.', 'error');
     if (form.password && form.password.length < 6) return notify('새 비밀번호는 6자 이상이어야 합니다.', 'error');
@@ -77,6 +81,7 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
       await saveUser({
         ...target,
         role,
+        nickname: nickname || target.nickname,
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
@@ -114,7 +119,7 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
     >
       <form id="profile-form" onSubmit={submit} className="space-y-3">
         <div className="grid grid-cols-2 gap-2">
-          <Field label="아이디"><Input value={target.username} disabled /></Field>
+          <Field label="닉네임"><Input value={form.nickname} onChange={e => set('nickname', e.target.value)} maxLength={12} placeholder="닉네임 (2~12자)" /></Field>
           <Field label="회원 유형">
             <Select value={role} disabled={!(editingOther && admin)} onChange={e => set('role', e.target.value as UserRole)}>
               {(Object.keys(ROLE_LABEL) as UserRole[]).map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}

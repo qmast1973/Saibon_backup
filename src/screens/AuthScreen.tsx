@@ -29,14 +29,14 @@ export function AuthScreen() {
   const [showAdminCreate, setShowAdminCreate] = useState(false);
 
   // 로그인
-  const [loginId, setLoginId] = useState(cache.getSavedId);
+  const [loginId, setLoginId] = useState(() => (cache.getSavedId().includes('@') ? cache.getSavedId() : ''));
   const [password, setPassword] = useState('');
   const [saveId, setSaveId] = useState(() => !!cache.getSavedId());
   const [autoLogin, setAutoLoginState] = useState(cache.getAutoLogin);
 
   // 회원가입
   const [reg, setReg] = useState({
-    email: '', username: '', role: 'merchant' as UserRole, storeName: '', businessNumber: '', name: '', region: '', address: '', phone: '', password: '', password2: '',
+    email: '', nickname: '', role: 'merchant' as UserRole, storeName: '', businessNumber: '', name: '', region: '', address: '', phone: '', password: '', password2: '',
   });
   const setRegField = (key: keyof typeof reg) => (v: string) => setReg(prev => ({ ...prev, [key]: v }));
 
@@ -94,7 +94,7 @@ export function AuthScreen() {
         {
           email: reg.email,
           password: reg.password,
-          username: reg.username || reg.email.split('@')[0],
+          nickname: reg.nickname,
           name: reg.name,
           phone: reg.phone,
           role: reg.role,
@@ -105,10 +105,10 @@ export function AuthScreen() {
         },
         users,
       );
-      setLoginId(created.username);
+      setLoginId(created.email || reg.email);
       setPassword('');
       setMode('login');
-      setMessage({ text: `회원가입이 완료되었습니다. (아이디: ${created.username})\n관리자 승인 후 로그인해주세요.`, error: false });
+      setMessage({ text: `회원가입이 완료되었습니다. (닉네임: ${created.nickname || reg.nickname})\n관리자 승인 후 로그인해주세요.`, error: false });
     });
   };
 
@@ -152,8 +152,8 @@ export function AuthScreen() {
 
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
-              <Field label="아이디 (또는 이메일)" hint="이 기기에서 처음 로그인하면 가입할 때 쓴 이메일 주소로 로그인해 주세요.">
-                <LoginIdInput required value={loginId} onChange={setLoginId} placeholder="아이디 또는 이메일" />
+              <Field label="이메일" hint="가입할 때 쓴 이메일 주소로 로그인합니다.">
+                <LoginIdInput email required autoComplete="email" value={loginId} onChange={setLoginId} placeholder="name@example.com" />
               </Field>
               <Field label="비밀번호">
                 <PasswordInput required value={password} onChange={setPassword} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
@@ -161,7 +161,7 @@ export function AuthScreen() {
               <div className="flex items-center justify-between text-xs text-gray-300">
                 <div className="flex gap-4">
                   <label className="flex items-center gap-1.5">
-                    <input type="checkbox" checked={saveId} onChange={e => setSaveId(e.target.checked)} className="accent-indigo-500" /> 아이디 저장
+                    <input type="checkbox" checked={saveId} onChange={e => setSaveId(e.target.checked)} className="accent-indigo-500" /> 이메일 저장
                   </label>
                   <label className="flex items-center gap-1.5">
                     <input type="checkbox" checked={autoLogin} onChange={e => setAutoLoginState(e.target.checked)} className="accent-indigo-500" /> 자동 로그인
@@ -202,8 +202,8 @@ export function AuthScreen() {
               <Field label="이메일 *">
                 <Input type="email" required autoComplete="email" value={reg.email} onChange={e => setRegField('email')(e.target.value.trim())} placeholder="name@example.com" />
               </Field>
-              <Field label="아이디 (영문/숫자)" hint="비워 두면 이메일 앞부분이 아이디가 됩니다.">
-                <LoginIdInput noAt value={reg.username} onChange={setRegField('username')} placeholder="로그인에 사용할 아이디" />
+              <Field label="닉네임 *" hint="앱에서 나를 구분하는 이름입니다. 2~12자, 한글 · 영문 · 숫자.">
+                <Input required minLength={2} maxLength={12} value={reg.nickname} onChange={e => setRegField('nickname')(e.target.value)} placeholder="닉네임" autoComplete="nickname" />
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="이름 / 대표자명 *">

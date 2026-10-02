@@ -1,7 +1,8 @@
 export type UserRole = 'merchant' | 'local' | 'buyer' | 'admin';
 
 export interface User {
-  username: string; // 소문자 고유키 (RTDB users/{username})
+  username: string; // 소문자 고유키 (RTDB users/{username}). 화면에는 보이지 않고 이메일 앞부분으로 만든다
+  nickname?: string; // 앱에서 나를 구분하는 이름 (가입 때 정함)
   name: string;
   role: UserRole;
   approved: boolean;

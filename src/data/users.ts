@@ -60,7 +60,7 @@ const AUTH_ERRORS: Record<string, string> = {
 };
 const authMessage = (e: unknown, fallback: string) => AUTH_ERRORS[(e as { code?: string })?.code || ''] || fallback;
 
-const WRONG_LOGIN = '아이디 또는 비밀번호가 올바르지 않습니다.';
+const WRONG_LOGIN = '이메일 또는 비밀번호가 올바르지 않습니다.';
 
 export const isPermissionDenied = (e: unknown) => /permission[_ ]denied/i.test(String((e as Error)?.message || e));
 
@@ -85,7 +85,7 @@ async function ensureFirebaseSession(email: string | undefined, password: string
  */
 export async function signIn(identifier: string, password: string, knownUsers: User[]): Promise<User> {
   const id = identifier.trim().toLowerCase();
-  if (!id || !password) throw new Error('아이디와 비밀번호를 입력해주세요.');
+  if (!id || !password) throw new Error('이메일과 비밀번호를 입력해주세요.');
   const hash = await sha256(password);
 
   // 1) 회원 목록 읽기 (이미 Firebase 로그인 상태이거나 규칙이 열려 있으면 성공)
@@ -152,10 +152,26 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   });
 }
 
+/** 이메일 앞부분으로 만든 내부 고유키 (RTDB 키에 쓸 수 없는 문자는 뺀다) */
+export const emailKey = (email: string) => userKey(String(email || '').split('@')[0]).replace(/[^a-z0-9_-]/g, '') || 'user';
+
+/** 이미 쓰는 키면 뒤에 번호를 붙여 비어 있는 키를 돌려준다 */
+export function freeKey(base: string, users: User[]): string {
+  let key = base;
+  for (let n = 2; users.some(u => userKey(u.username) === key); n++) key = `${base}${n}`;
+  return key;
+}
+
+/** 닉네임이 이미 쓰이는지 (대소문자 · 공백 무시, 닉네임이 없는 예전 회원은 이름 대신 내부 키와 비교) */
+export const nicknameTaken = (users: User[], nickname: string, exceptUsername?: string) => {
+  const norm = (v: string) => v.replace(/\s+/g, '').toLowerCase();
+  return users.some(u => userKey(u.username) !== userKey(exceptUsername || '') && norm(u.nickname || u.username) === norm(nickname));
+};
+
 export interface SignUpInput {
   email: string;
   password: string;
-  username: string;
+  nickname: string;
   name: string;
   phone: string;
   role: UserRole;
@@ -168,8 +184,10 @@ export interface SignUpInput {
 /** 회원가입: 관리자 승인 전까지 approved=false */
 export async function signUp(input: SignUpInput, existing: User[]): Promise<User> {
   const email = input.email.trim().toLowerCase();
-  const username = userKey(input.username) || email.split('@')[0];
-  if (existing.some(u => userKey(u.username) === username)) throw new Error('이미 사용 중인 아이디입니다.');
+  const nickname = input.nickname.trim();
+  if (nickname.length < 2 || nickname.length > 12) throw new Error('닉네임은 2~12자로 입력해주세요.');
+  if (!/^[0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ_\- ]+$/.test(nickname)) throw new Error('닉네임은 한글, 영문, 숫자만 쓸 수 있습니다.');
+  if (nicknameTaken(existing, nickname)) throw new Error('이미 사용 중인 닉네임입니다.');
   if (input.password.length < 6) throw new Error('비밀번호는 6자 이상이어야 합니다.');
 
   // DB는 이메일 로그인 상태에서만 열리므로 이메일 계정이 없으면 가입시키지 않는다
@@ -182,16 +200,18 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
     throw new Error(authMessage(e, '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'));
   }
 
-  // 로그인된 상태에서 최신 회원 목록을 다시 읽어, 같은 아이디가 있으면 덮어쓰지 않고 뒤에 번호를 붙인다
+  // 로그인된 상태에서 최신 회원 목록을 다시 읽어, 같은 키(이메일 앞부분)나 닉네임이 있으면 덮어쓰지 않고 뒤에 번호를 붙인다
   const fresh = await fetchUsers().catch(() => existing);
-  let finalName = username;
-  for (let n = 2; fresh.some(u => userKey(u.username) === finalName); n++) finalName = `${username}${n}`;
+  const finalName = freeKey(emailKey(email), fresh);
+  let finalNick = nickname;
+  for (let n = 2; nicknameTaken(fresh, finalNick); n++) finalNick = `${nickname}${n}`;
 
   const isMerchant = input.role === 'merchant';
   const saved = await saveUser({
     uid,
     email,
     username: finalName,
+    nickname: finalNick,
     name: input.name.trim(),
     phone: input.phone.trim(),
     passwordHash: await sha256(input.password),
