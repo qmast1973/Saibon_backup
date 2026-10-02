@@ -1,11 +1,12 @@
 import { Fragment, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Layers, Pencil, Plus, Store, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Layers, Pencil, Plus, Store, Trash2 } from 'lucide-react';
 import type { Transaction } from '../types';
 import { formatLocation, formatMoney } from '../domain/format';
 import { getSubStores, sortByStoreFocus } from '../domain/groups';
 import { hasStatus, isDeposit, isFeeCharged, isOrder, splitAmounts } from '../domain/ledger';
 import type { GroupMode, StoreGroup } from '../domain/storeGroups';
 import { compact } from '../domain/text';
+import { useRowDrag } from '../hooks/useRowDrag';
 import { useApp } from '../state/AppContext';
 import { Badge, Button, EmptyState, Modal, cx } from './ui';
 
@@ -15,8 +16,8 @@ interface Actions {
   onEditDeposit?: (t: Transaction) => void;
   onDeleteDeposit?: (t: Transaction) => void;
   onCollect?: (g: StoreGroup) => void;
-  /** 갯수 집계: 거래처 순서 직접 정하기 (editing 이면 ▲▼ 버튼이 보인다) */
-  reorder?: { editing: boolean; onMove: (store: string, dir: -1 | 1) => void };
+  /** 갯수 집계: 거래처 순서 직접 정하기 (editing 이면 줄 끝의 손잡이를 꾹 눌러 끌어서 옮긴다) */
+  reorder?: { editing: boolean; onDrop: (store: string, toIndex: number) => void };
 }
 
 /** 거래처 한 줄에 묶인 주문들의 비고를 중복 없이 '/'로 이어 붙인다 (입금 · 미수금 기록은 제외) */
@@ -32,6 +33,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
   const detailGroup = detail ? groups.find(g => g.store === detail.store) : undefined;
   const isCollection = mode === 'collection';
   const moving = !isCollection && !!reorder?.editing;
+  const drag = useRowDrag({ enabled: moving, keys: groups.map(g => g.store), onDrop: (store, to) => reorder?.onDrop(store, to) });
 
   return (
     <>
@@ -40,7 +42,6 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
           <table className="w-full sm:min-w-[620px] whitespace-nowrap text-left text-sm text-gray-300">
             <thead className="border-b border-gray-800 bg-gray-800/50 text-xs text-gray-400">
               <tr>
-                {moving && <th className="w-24 p-1 text-center text-[10px] font-semibold">순서</th>}
                 {isCollection && <th className="hidden p-3 font-semibold sm:table-cell">지역</th>}
                 <th className="p-3 font-semibold">상호</th>
                 <th className="hidden p-3 text-center font-semibold sm:table-cell">주문</th>
@@ -56,6 +57,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                     <th className={cx('p-2 font-semibold sm:p-3', moving && 'hidden sm:table-cell')}>비고</th>
                   </>
                 )}
+                {moving && <th className="w-12 p-1" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -67,15 +69,17 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                 const open = expanded[g.store];
                 return (
                   <Fragment key={g.store}>
-                    <tr className="cursor-pointer transition hover:bg-indigo-950/40" onClick={() => setDetail({ store: g.store, sub: null })}>
-                      {moving && (
-                        <td className="p-1" onClick={e => e.stopPropagation()}>
-                          <span className="flex items-center justify-center gap-1">
-                            <button type="button" aria-label={`${g.store} 위로`} disabled={groups[0] === g} onClick={() => reorder!.onMove(g.store, -1)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-600 bg-gray-800 text-gray-100 active:bg-indigo-700 disabled:opacity-25"><ArrowUp className="h-5 w-5" /></button>
-                            <button type="button" aria-label={`${g.store} 아래로`} disabled={groups[groups.length - 1] === g} onClick={() => reorder!.onMove(g.store, 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-600 bg-gray-800 text-gray-100 active:bg-indigo-700 disabled:opacity-25"><ArrowDown className="h-5 w-5" /></button>
-                          </span>
-                        </td>
+                    <tr
+                      ref={drag.rowRef(g.store)}
+                      style={drag.rowStyle(g.store)}
+                      className={cx(
+                        'cursor-pointer transition hover:bg-indigo-950/40',
+                        drag.dragKey === g.store && 'bg-indigo-900/90 outline outline-2 outline-indigo-400',
+                        drag.dropMark(g.store) === 'before' && 'shadow-[inset_0_3px_0_0_#818cf8]',
+                        drag.dropMark(g.store) === 'after' && 'shadow-[inset_0_-3px_0_0_#818cf8]',
                       )}
+                      onClick={() => setDetail({ store: g.store, sub: null })}
+                    >
                       {isCollection && <td className="hidden p-3 font-semibold sm:table-cell">{g.region}</td>}
                       <td className="whitespace-normal p-2 font-bold text-gray-100 sm:p-3">
                         <span className="flex flex-wrap items-center gap-1.5">
@@ -119,6 +123,18 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                           <td className={cx('min-w-[110px] whitespace-normal break-words p-2 text-xs font-normal text-gray-300 sm:p-3', moving && 'hidden sm:table-cell')}>{remarkOf(g.rows) || <span className="text-gray-600">-</span>}</td>
                         </>
                       )}
+                      {moving && (
+                        <td className="p-1 text-center" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            aria-label={`${g.store} 순서 옮기기 (꾹 눌러서 끌기)`}
+                            {...drag.handleProps(g.store)}
+                            className={cx('inline-flex h-12 w-11 cursor-grab items-center justify-center rounded-lg border active:cursor-grabbing', drag.dragKey === g.store ? 'border-indigo-300 bg-indigo-600 text-white' : 'border-gray-600 bg-gray-800 text-gray-300')}
+                          >
+                            <GripVertical className="h-6 w-6" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                     {open && subs.map(sub => {
                       const subRows = g.rows.filter(t => compact(t.store) === compact(sub));
@@ -132,7 +148,6 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                       const orders = subRows.filter(isOrder);
                       return (
                         <tr key={sub} className="cursor-pointer bg-violet-950/20 text-xs hover:bg-violet-900/30" onClick={() => setDetail({ store: g.store, sub })}>
-                          {moving && <td />}
                           {isCollection && <td className="hidden p-2.5 pl-6 text-gray-500 sm:table-cell">↳</td>}
                           <td className="p-2.5"><span className="flex items-center gap-1.5 font-semibold text-violet-200"><Store className="h-3 w-3 text-cyan-400" />{sub}</span></td>
                           <td className="hidden p-2.5 text-center sm:table-cell">{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
@@ -148,6 +163,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                               <td className={cx('min-w-[110px] whitespace-normal break-words p-2.5 text-gray-400', moving && 'hidden sm:table-cell')}>{remarkOf(subRows) || <span className="text-gray-600">-</span>}</td>
                             </>
                           )}
+                          {moving && <td />}
                         </tr>
                       );
                     })}
@@ -158,11 +174,11 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
             {!isCollection && groups.length > 0 && (
               <tfoot className="border-t-2 border-gray-700 bg-gray-800/60 text-xs font-bold text-gray-100">
                 <tr>
-                  {moving && <td />}
                   <td className="p-2 sm:p-3">합계 <span className="font-normal text-gray-400">({groups.length}곳)</span></td>
                   <td className="hidden p-3 text-center sm:table-cell">{groups.reduce((n, g) => n + g.orderCount, 0)}건</td>
                   <td className="p-2 text-right text-sm text-emerald-300 sm:p-3">{groups.reduce((n, g) => n + g.itemCount, 0)}개</td>
                   <td className={cx('p-2 sm:p-3', moving && 'hidden sm:table-cell')} />
+                  {moving && <td />}
                 </tr>
               </tfoot>
             )}

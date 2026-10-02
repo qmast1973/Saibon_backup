@@ -3,7 +3,7 @@ import { Download, ListOrdered } from 'lucide-react';
 import type { Nav } from '../App';
 import { exportWorkday } from '../domain/excel';
 import { COUNT_ZERO_STATUSES, STAT_FILTERS, totalItemCount } from '../domain/ledger';
-import { applyStoreOrder, buildStoreGroups, moveInOrder } from '../domain/storeGroups';
+import { applyStoreOrder, buildStoreGroups, moveToIndex } from '../domain/storeGroups';
 import { useApp } from '../state/AppContext';
 import { StoreGroupTable } from '../components/StoreGroupTable';
 import { Badge, Button, Screen, cx } from '../components/ui';
@@ -76,8 +76,8 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     () => applyStoreOrder(buildStoreGroups(list, { mode: 'stats', rules, users, includeFee }), savedOrder),
     [list, rules, users, includeFee, savedOrder],
   );
-  const moveStore = (store: string, dir: -1 | 1) =>
-    saveStoreOrder(moveInOrder(savedOrder, groups.map(g => g.store), store, dir)).catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'));
+  const dropStore = (store: string, toIndex: number) =>
+    saveStoreOrder(moveToIndex(savedOrder, groups.map(g => g.store), store, toIndex)).catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'));
 
   return (
     <Screen
@@ -122,14 +122,14 @@ export function StatsScreen({ nav }: { nav: Nav }) {
 
       {editingOrder && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-700 bg-indigo-950/60 p-3 text-xs text-indigo-100">
-          <span>▲▼ 버튼으로 거래처를 <b>들르는 순서대로</b> 옮기세요. 옮기는 즉시 저장되고, 다른 기기에서도 같은 순서로 보입니다.</span>
+          <span>거래처 오른쪽의 <b>⋮⋮ 손잡이를 꾹 눌렀다가</b>(0.3초) 원하는 위치로 끌어 놓으세요. <b>들르는 순서대로</b> 놓으면 바로 저장되고, 다른 기기에서도 같은 순서로 보입니다.</span>
           {savedOrder && savedOrder.length > 0 && (
             <Button size="sm" onClick={() => saveStoreOrder([]).catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'))}>기본 순서로 되돌리기</Button>
           )}
         </div>
       )}
 
-      <StoreGroupTable groups={groups} mode="stats" onOpenOrder={t => nav.open({ type: 'order', tx: t })} reorder={{ editing: editingOrder, onMove: moveStore }} />
+      <StoreGroupTable groups={groups} mode="stats" onOpenOrder={t => nav.open({ type: 'order', tx: t })} reorder={{ editing: editingOrder, onDrop: dropStore }} />
     </Screen>
   );
 }

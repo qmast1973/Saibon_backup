@@ -138,7 +138,7 @@ describe('갯수 집계 숫자 검산', () => {
   });
 });
 
-import { applyStoreOrder, moveInOrder } from './storeGroups';
+import { applyStoreOrder, moveToIndex } from './storeGroups';
 describe('거래처 순서 직접 정하기', () => {
   const g = (...names: string[]) => names.map(store => ({ store }));
   const names = (list: { store: string }[]) => list.map(x => x.store);
@@ -149,22 +149,23 @@ describe('거래처 순서 직접 정하기', () => {
     expect(names(applyStoreOrder(g('가', '나'), []))).toEqual(['가', '나']);
   });
 
-  it('한 칸 위/아래로 옮긴 순서를 돌려준다 (처음 옮길 때는 보이는 순서가 저장 순서가 된다)', () => {
-    expect(moveInOrder(undefined, ['가', '나', '다'], '다', -1)).toEqual(['가', '다', '나']);
-    expect(moveInOrder(undefined, ['가', '나', '다'], '가', 1)).toEqual(['나', '가', '다']);
+  it('끌어서 놓은 자리(옮긴 뒤 위치)로 옮긴 순서를 돌려준다 (처음 옮길 때는 보이는 순서가 저장 순서가 된다)', () => {
+    expect(moveToIndex(undefined, ['가', '나', '다'], '다', 0)).toEqual(['다', '가', '나']);
+    expect(moveToIndex(undefined, ['가', '나', '다'], '가', 2)).toEqual(['나', '다', '가']);
+    expect(moveToIndex(undefined, ['가', '나', '다'], '가', 1)).toEqual(['나', '가', '다']);
   });
 
-  it('맨 위 · 맨 아래에서 더 못 옮기면 그대로 둔다', () => {
-    expect(moveInOrder(['가', '나'], ['가', '나'], '가', -1)).toEqual(['가', '나']);
-    expect(moveInOrder(['가', '나'], ['가', '나'], '나', 1)).toEqual(['가', '나']);
+  it('제자리에 놓거나 범위를 벗어나도 안전하다', () => {
+    expect(moveToIndex(['가', '나'], ['가', '나'], '가', 0)).toEqual(['가', '나']);
+    expect(moveToIndex(['가', '나'], ['가', '나'], '나', 99)).toEqual(['가', '나']);
+    expect(moveToIndex(undefined, ['가'], '가', 0)).toEqual(['가']);
   });
 
   it('걸러져서 안 보이는 거래처의 자리는 유지한다', () => {
-    // 전체 순서: 가 숨김1 나 숨김2 다  /  화면에는 가 나 다만 보임
+    // 전체 순서: 가 숨김1 나 숨김2 다  /  화면에는 가 나 다만 보임 → 다를 가 바로 뒤(1번째)로
     const saved = ['가', '숨김1', '나', '숨김2', '다'];
-    const moved = moveInOrder(saved, ['가', '나', '다'], '다', -1);
-    expect(moved).toEqual(['가', '숨김1', '다', '나', '숨김2']);
-    // 옮긴 뒤 화면 순서가 의도대로
+    const moved = moveToIndex(saved, ['가', '나', '다'], '다', 1);
+    expect(moved).toEqual(['가', '다', '숨김1', '나', '숨김2']);
     expect(names(applyStoreOrder(g('가', '나', '다'), moved))).toEqual(['가', '다', '나']);
   });
 });

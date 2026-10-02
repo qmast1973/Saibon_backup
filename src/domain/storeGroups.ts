@@ -140,18 +140,17 @@ export function applyStoreOrder<T extends { store: string }>(groups: T[], order:
 }
 
 /**
- * 화면에 보이는 거래처 목록(shown)에서 name 을 한 칸 위/아래로 옮긴 전체 순서를 돌려준다.
+ * 화면에 보이는 거래처 목록(shown)에서 name 을 toIndex 번째 자리(옮긴 뒤 위치)로 옮긴 전체 순서를 돌려준다.
  * 걸러져서 안 보이는 거래처의 순서는 그대로 두고, 저장된 순서에 없는 거래처는 보이는 순서대로 뒤에 붙인다.
  */
-export function moveInOrder(saved: string[] | undefined, shown: string[], name: string, dir: -1 | 1): string[] {
-  const idx = shown.indexOf(name);
-  const target = shown[idx + dir];
-  if (idx < 0 || target === undefined) return saved ? [...saved] : [...shown];
+export function moveToIndex(saved: string[] | undefined, shown: string[], name: string, toIndex: number): string[] {
+  const others = shown.filter(n => n !== name);
   const full = [...(saved || [])];
   for (const n of shown) if (!full.includes(n)) full.push(n);
-  // 보이는 순서(shown)를 기준으로 name 과 이웃(target)의 자리를 바꾼다
-  const withoutName = full.filter(n => n !== name);
-  const at = withoutName.indexOf(target);
-  withoutName.splice(dir < 0 ? at : at + 1, 0, name);
-  return withoutName;
+  if (!shown.includes(name) || others.length === 0) return full;
+  const rest = full.filter(n => n !== name);
+  const clamped = Math.max(0, Math.min(toIndex, others.length));
+  if (clamped === 0) rest.splice(rest.indexOf(others[0]), 0, name);
+  else rest.splice(rest.indexOf(others[clamped - 1]) + 1, 0, name);
+  return rest;
 }
