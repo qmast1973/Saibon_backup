@@ -167,7 +167,8 @@ export const STAT_FILTERS: { key: string; label: string; unit: string; tone: str
   { key: 'allMisong', label: '올미송(결제)', unit: '건', tone: 'yellow', test: t => t.status === '올미송(결제만)' },
   { key: 'misongFind', label: '미송(찾기)', unit: '건', tone: 'orange', test: t => t.status === '미송(찾기)' },
   { key: 'returnOnly', label: '반품만', unit: '건', tone: 'rose', test: t => t.status === '반품만' },
-  { key: 'exchange', label: '교환/반송', unit: '건', tone: 'pink', test: t => ['교환', '반품/교환', '반송'].includes(String(t.status || '').trim()) },
+  { key: 'exchange', label: '교환', unit: '건', tone: 'pink', test: t => ['교환', '반품/교환'].includes(String(t.status || '').trim()) },
+  { key: 'sendBack', label: '반송', unit: '건', tone: 'sky', test: t => String(t.status || '').trim() === '반송' },
   { key: 'exchangePurchase', label: '교환/매입', unit: '건', tone: 'fuchsia', test: t => EXCHANGE_PURCHASE.has(String(t.status || '').trim()) },
   { key: 'purchase', label: '매입처리', unit: '건', tone: 'purple', test: t => t.status === '매입처리' },
 ];
