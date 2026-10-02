@@ -111,3 +111,29 @@ describe('상태 기준 갯수 (사장님 규칙)', () => {
     expect(defaultItemCount('교환/매입', 0)).toBe(1);
   });
 });
+
+import { STAT_FILTERS, totalItemCount } from './ledger';
+describe('갯수 집계 숫자 검산', () => {
+  const list = [
+    order('2026-10-02', '상호A', 10, { status: '주문찾기', itemCount: 2 }),
+    order('2026-10-02', '상호A', 0, { status: '올미송(결제만)', itemCount: 0 }),
+    order('2026-10-02', '상호B', 0, { status: '미송(찾기)', itemCount: 1 }),
+    order('2026-10-02', '상호B', 0, { status: '', itemCount: 5 }), // 미처리인데 갯수만 먼저 입력된 주문
+    deposit('2026-10-02', '상호A', 7),
+  ];
+  const orders = list.filter(t => t.market !== '입금');
+  const count = (key: string) => orders.filter(STAT_FILTERS.find(s => s.key === key)!.test).length;
+
+  it('완료 = 갯수 있음 + 갯수 없음, 총 = 완료 + 미처리', () => {
+    expect(count('completed')).toBe(count('hasItems') + count('noItems'));
+    expect(orders.length).toBe(count('completed') + count('uncompleted'));
+    expect([count('hasItems'), count('noItems'), count('uncompleted')]).toEqual([2, 1, 1]);
+  });
+
+  it('카드의 물건 갯수 합계와 표(거래처별 합계)의 갯수 합계가 같다 (미처리 주문의 갯수는 세지 않는다)', () => {
+    const groups = buildStoreGroups(list, { mode: 'stats', ...opts });
+    const tableTotal = groups.reduce((n, g) => n + g.itemCount, 0);
+    expect(totalItemCount(orders)).toBe(3);
+    expect(tableTotal).toBe(3);
+  });
+});

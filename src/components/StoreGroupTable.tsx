@@ -113,7 +113,7 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                       const sums = subRows.reduce(
                         (acc, t) => {
                           const a = isCollection ? splitAmounts(t) : { billed: Number(t.expense) || 0, paid: Number(t.income) || 0 };
-                          return { billed: acc.billed + a.billed, paid: acc.paid + a.paid, items: acc.items + (Number(t.itemCount) || 0) };
+                          return { billed: acc.billed + a.billed, paid: acc.paid + a.paid, items: acc.items + (isOrder(t) && hasStatus(t) ? Number(t.itemCount) || 0 : 0) };
                         },
                         { billed: 0, paid: 0, items: 0 },
                       );
@@ -142,6 +142,17 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                 );
               })}
             </tbody>
+            {!isCollection && groups.length > 0 && (
+              <tfoot className="border-t-2 border-gray-700 bg-gray-800/60 text-xs font-bold text-gray-100">
+                <tr>
+                  <td className="hidden p-3 sm:table-cell" />
+                  <td className="p-2 sm:p-3">합계 <span className="font-normal text-gray-400">({groups.length}곳)</span></td>
+                  <td className="hidden p-3 text-center sm:table-cell">{groups.reduce((n, g) => n + g.orderCount, 0)}건</td>
+                  <td className="p-2 text-right text-sm text-emerald-300 sm:p-3">{groups.reduce((n, g) => n + g.itemCount, 0)}개</td>
+                  <td className="p-2 sm:p-3" />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

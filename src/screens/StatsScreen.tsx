@@ -34,6 +34,17 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     return STAT_FILTERS.map(s => ({ key: s.key, label: s.label, unit: s.unit, tone: s.tone, value: f.scoped.filter(s.test).length }));
   }, [f.scoped]);
   const itemTotal = useMemo(() => totalItemCount(f.scoped), [f.scoped]);
+  // 눈으로 맞춰 볼 수 있는 검산: 총 = 완료 + 미처리, 완료 = 갯수 있음 + 갯수 없음, 갯수 합계 = 갯수 있음인 주문의 갯수를 더한 값
+  const checks = useMemo(() => {
+    const n = (key: string) => f.scoped.filter(STAT_FILTERS.find(s => s.key === key)!.test).length;
+    const all = f.scoped.length, done = n('completed'), todo = n('uncompleted'), has = n('hasItems'), none = n('noItems');
+    const hasRows = f.scoped.filter(STAT_FILTERS.find(s => s.key === 'hasItems')!.test);
+    return [
+      { label: '총 주문', ok: all === done + todo, text: `${all}건 = 완료 ${done}건 + 미처리 ${todo}건` },
+      { label: '완료', ok: done === has + none, text: `${done}건 = 갯수 있음 ${has}건 + 갯수 없음 ${none}건` },
+      { label: '물건 갯수 합계', ok: itemTotal === hasRows.reduce((sum, t) => sum + (Number(t.itemCount) || 0), 0), text: `${itemTotal}개 (갯수 있음 ${has}건의 갯수를 더한 값, 갯수 없음 ${none}건은 0개)` },
+    ];
+  }, [f.scoped, itemTotal]);
 
   const list = useMemo(() => {
     const test = STAT_FILTERS.find(s => s.key === filter)?.test ?? (() => true);
@@ -56,6 +67,14 @@ export function StatsScreen({ nav }: { nav: Nav }) {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-2 text-xs text-gray-400">
           <span>범위: <b className="text-white">{f.building || '전체 건물'}{f.floor && ` ${f.floor}층`}</b> · 목록 <b className="text-yellow-300">{list.length}</b>건</span>
           <span>물건 갯수 합계 <b className="text-sm text-cyan-300">{itemTotal}개</b></span>
+        </div>
+        <div className="mb-2 space-y-1 rounded-lg border border-gray-800 bg-gray-950 p-2 text-[11px] leading-snug text-gray-300">
+          {checks.map(c => (
+            <p key={c.label} className="flex items-start gap-1.5">
+              <span className={cx('mt-px shrink-0 font-black', c.ok ? 'text-emerald-400' : 'text-rose-400')}>{c.ok ? '✓' : '✗'}</span>
+              <span><b className="text-gray-100">{c.label}</b> {c.text}</span>
+            </p>
+          ))}
         </div>
         <div className="grid grid-cols-4 gap-1 text-center sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9">
           {cards.map(c => (
