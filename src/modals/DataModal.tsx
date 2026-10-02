@@ -60,7 +60,8 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
 
   const onExcelFile = (file: File) =>
     task('엑셀 읽기', async () => {
-      const rows = await readLedgerExcel(file, nav.date);
+      const { rows, convertedFromWon } = await readLedgerExcel(file, nav.date);
+      if (convertedFromWon) notify('엑셀 금액이 원 단위로 보여 천원 단위로 바꿔 읽었습니다 (35000 → 35,000원). 다음 화면에서 금액이 맞는지 확인하세요.', 'info');
       if (rows.length === 0) throw new Error('가져올 데이터 행이 없습니다. 열 제목(날짜, 상호, 건물, 층, 호수, 대납 등)을 확인해주세요.');
       setExcelRows(rows);
     });
