@@ -1,4 +1,4 @@
-import { get, limitToLast, onValue, orderByKey, query, ref, remove, set, update } from 'firebase/database';
+import { endAt, get, limitToLast, onValue, orderByKey, query, ref, remove, set, startAt, update } from 'firebase/database';
 import type { Transaction } from '../types';
 import { normalizeDate } from '../domain/dates';
 import { parseAmount } from '../domain/format';
@@ -211,19 +211,54 @@ export async function deleteOrder(t: Transaction): Promise<void> {
  * DB 전체 주문 (중복 정리 · 백업용). 동기화 범위(90일)보다 오래된 것도 포함.
  * 상호·금액이 모두 빈 레코드는 orders 에서 빼고 empties 로 따로 돌려준다.
  */
-export async function fetchAllOrders(): Promise<{ orders: Transaction[]; empties: Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>[] }> {
-  if (IS_DEMO) throw new Error('미리보기에서는 서버 데이터를 불러올 수 없습니다.');
-  const snapshot = await withTimeout(get(ref(rtdb, 'orders')), 20000, '전체 주문 조회');
-  const orders: Transaction[] = [];
-  const empties: Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>[] = [];
-  const data = (snapshot.val() || {}) as Record<string, Record<string, Partial<OrderRecord>>>;
-  for (const [dateKey, day] of Object.entries(data)) {
+type EmptyRef = Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>;
+
+/** 날짜 키 목록만 가볍게 받는다 (REST shallow). 규칙상 막히면 null */
+async function fetchDateKeys(): Promise<string[] | null> {
+  try {
+    const res = await withTimeout(fetch(`${rtdb.app.options.databaseURL}/orders.json?shallow=true`), 30000, '날짜 목록 조회');
+    if (!res.ok) return null;
+    return Object.keys((await res.json()) || {}).sort();
+  } catch {
+    return null;
+  }
+}
+
+function collect(data: Record<string, Record<string, Partial<OrderRecord>>>, orders: Transaction[], empties: EmptyRef[]) {
+  for (const [dateKey, day] of Object.entries(data || {})) {
     for (const [orderId, record] of Object.entries(day || {})) {
       const tx = record ? decodeOrder(dateKey, orderId, record) : null;
       if (tx) orders.push(tx);
       else empties.push({ firebaseOrderId: orderId, firebaseDate: dateKey, date: dateKey });
     }
   }
+}
+
+/**
+ * 서버 전체 주문. 데이터가 커서 한 번에 받으면 시간 초과가 나므로 달마다 나눠 받는다.
+ * onProgress(받은 달 수, 전체 달 수)로 진행 상황을 알린다.
+ */
+export async function fetchAllOrders(onProgress?: (done: number, total: number) => void): Promise<{ orders: Transaction[]; empties: EmptyRef[] }> {
+  if (IS_DEMO) throw new Error('미리보기에서는 서버 데이터를 불러올 수 없습니다.');
+  const orders: Transaction[] = [];
+  const empties: EmptyRef[] = [];
+
+  const keys = await fetchDateKeys();
+  if (!keys) {
+    // 날짜 목록을 못 받으면 예전처럼 한 번에 받되 넉넉히 기다린다
+    const snapshot = await withTimeout(get(ref(rtdb, 'orders')), 180000, '전체 주문 조회');
+    collect(snapshot.val(), orders, empties);
+    return { orders, empties };
+  }
+
+  const months = [...new Set(keys.map(k => k.slice(0, 7)))];
+  for (let i = 0; i < months.length; i++) {
+    onProgress?.(i, months.length);
+    const m = months[i];
+    const snapshot = await withTimeout(get(query(ref(rtdb, 'orders'), orderByKey(), startAt(m), endAt(`${m}\uf8ff`))), 90000, `${m} 주문 조회`);
+    collect(snapshot.val(), orders, empties);
+  }
+  onProgress?.(months.length, months.length);
   return { orders, empties };
 }
 
