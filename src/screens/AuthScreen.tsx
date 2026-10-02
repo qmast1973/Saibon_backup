@@ -117,7 +117,7 @@ export function AuthScreen() {
     e.preventDefault();
     run(async () => {
       await sendPasswordReset(resetEmail);
-      setMessage({ text: `${resetEmail} 로 재설정 메일을 보냈습니다. 받은편지함(또는 스팸함)을 확인해주세요.`, error: false });
+      setMessage({ text: `${resetEmail} 로 가입된 계정이 있으면 재설정 메일이 갑니다. 몇 분 안에 받은편지함(또는 스팸함)을 확인해주세요. 메일이 안 오면 그 이메일로 가입된 계정이 없는 것입니다.`, error: false });
     });
   };
 
