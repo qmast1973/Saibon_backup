@@ -17,9 +17,10 @@ export interface ExcelRow {
   income: number;
   status: string;
   remark: string;
+  itemCount?: number; // 물건 갯수 (엑셀에 '수량' 열이 있을 때만)
 }
 
-const HEADER_KEYWORDS = ['날짜', '일자', '일시', '담당', '삼촌', '상호', '거래처', '매장', '건물', '시장', '상가', '층', '호수', '호', '대납', '지출', '금액', '입금', '수금', '상태', '비고', '메모'];
+const HEADER_KEYWORDS = ['날짜', '일자', '일시', '담당', '삼촌', '상호', '거래처', '매장', '건물', '시장', '상가', '층', '호수', '호', '대납', '지출', '금액', '입금', '수금', '상태', '비고', '메모', '수량', '갯수'];
 
 const COLUMNS: Record<keyof ExcelRow, { keys: string[]; fallback: number }> = {
   date: { keys: ['날짜', '일자', '주문일', '일시', 'date'], fallback: 0 },
@@ -31,6 +32,7 @@ const COLUMNS: Record<keyof ExcelRow, { keys: string[]; fallback: number }> = {
   room: { keys: ['호수', '호', 'room'], fallback: 6 },
   expense: { keys: ['대납', '대납금', '대납액', '지출', '사입금', 'expense'], fallback: 7 },
   income: { keys: ['입금', '입금액', '수금', '수금액', 'income'], fallback: -1 },
+  itemCount: { keys: ['수량', '물건갯수', '물건수', '갯수', '개수', 'itemcount'], fallback: -1 },
   status: { keys: ['상태', '완료', '진행', '구분', '완료여부', 'status'], fallback: -1 },
   remark: { keys: ['비고', '메모', '특이사항', '내용', 'remark', 'memo'], fallback: -1 },
 };
@@ -85,6 +87,7 @@ export async function readLedgerExcel(file: File, defaultDate: string): Promise<
       income: parseAmount(cell(row, 'income')),
       status: String(cell(row, 'status') ?? '').trim(),
       remark: String(cell(row, 'remark') ?? '').trim(),
+      itemCount: col.itemCount >= 0 && String(cell(row, 'itemCount') ?? '').trim() !== '' ? parseAmount(cell(row, 'itemCount')) : undefined,
     };
     if (parsed.store || parsed.expense || parsed.income) rows.push(parsed);
   }
@@ -118,6 +121,7 @@ export function excelRowToTransaction(r: ExcelRow, role: string): Omit<Transacti
     region: r.region || '합성동',
     expense: r.expense,
     income: r.income,
+    itemCount: r.itemCount,
     status: r.status,
     remark: r.remark,
     recordType: isReceivableRow(r) ? 'receivable' : 'order',
