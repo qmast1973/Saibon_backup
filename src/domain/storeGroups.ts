@@ -16,7 +16,7 @@ export interface StoreGroup {
   paid: number; // 입금 합계
   fee: number; // 사입비
   carry: number; // 이월 미수금 (이전 날짜에서 못 받은 금액)
-  balance: number; // 미수금 = 이월 + 대납 + 사입비 - 입금
+  balance: number; // 미수금 = 이월 + 대납 + 사입비 - 입금 (초과 입금이면 음수)
   itemCount: number;
   isMonthly: boolean;
   monthlyAmount: number;
@@ -85,14 +85,14 @@ export function buildStoreGroups(
   for (const g of map.values()) {
     g.carry = opts.carry?.get(g.store)?.amount ?? 0;
     g.fee = opts.mode === 'collection' && opts.includeFee && !g.isMonthly ? g.completedCount * FEE_PER_ORDER : 0;
-    g.balance = Math.max(0, g.carry + g.billed + g.fee - g.paid);
+    g.balance = g.carry + g.billed + g.fee - g.paid; // 더 받았으면 음수(-)
   }
   return [...map.values()].sort((a, b) => (opts.mode === 'collection' ? sortKo(a.region, b.region) : 0) || sortKo(a.store, b.store));
 }
 
 /**
  * 기준 날짜 전까지 거래처별로 못 받은 금액(이월 미수금).
- * 날짜마다 (대납 + 사입비 - 입금)을 거래처별로 누적하고, 합계가 0 이하(다 받음/선입금)인 거래처는 뺀다.
+ * 날짜마다 (대납 + 사입비 - 입금)을 거래처별로 누적한다. 더 받은 거래처는 음수(-)로 넘어오고, 딱 맞게 받아 0이면 뺀다.
  * 미수금 기록(recordType receivable)은 합산하지 않는다: 이미 주문 금액에 들어 있어 이중으로 잡히기 때문.
  */
 export function computeCarryOver(
@@ -124,6 +124,6 @@ export function computeCarryOver(
   }
 
   const out: CarryOver = new Map();
-  for (const [store, v] of total) if (v.amount > 0) out.set(store, { amount: v.amount, region: v.region, manager: v.manager });
+  for (const [store, v] of total) if (v.amount !== 0) out.set(store, { amount: v.amount, region: v.region, manager: v.manager });
   return out;
 }

@@ -90,9 +90,10 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                             {g.isMonthly && <span className="mt-0.5 inline-block rounded border border-emerald-700 px-1 font-sans text-[10px] text-emerald-400">월사입{g.monthlyAmount ? ` ${g.monthlyAmount.toLocaleString()}원` : ''} 제외</span>}
                           </td>
                           <td className="p-2 text-right font-mono text-xs text-emerald-400 sm:p-3 sm:text-sm">{formatMoney(g.paid)}</td>
-                          <td className={cx('p-2 text-right font-mono text-xs font-bold sm:p-3 sm:text-sm', g.balance > 0 ? 'text-amber-400' : 'text-gray-500')}>
+                          <td className={cx('p-2 text-right font-mono text-xs font-bold sm:p-3 sm:text-sm', g.balance > 0 ? 'text-amber-400' : g.balance < 0 ? 'text-sky-300' : 'text-gray-500')}>
                             {formatMoney(g.balance)}
-                            {g.carry > 0 && <span className="block font-sans text-[10px] font-normal text-sky-300">이월 {formatMoney(g.carry)} 포함</span>}
+                            {g.carry !== 0 && <span className="block font-sans text-[10px] font-normal text-sky-300">이월 {formatMoney(g.carry)} 포함</span>}
+                            {g.balance < 0 && <span className="block font-sans text-[10px] font-normal text-sky-300">초과 입금</span>}
                           </td>
                         </>
                       ) : (

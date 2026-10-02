@@ -103,7 +103,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
     >
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
-          ['이월 미수금 (전날까지)', formatMoney(totals.carry), totals.carry > 0 ? 'text-sky-300' : 'text-gray-500'],
+          ['이월 미수금 (전날까지)', formatMoney(totals.carry), totals.carry !== 0 ? 'text-sky-300' : 'text-gray-500'],
           ['오늘 청구액', formatMoney(totals.billed), 'text-rose-400'],
           ['총 주문', `${totals.orders}건`, 'text-gray-100'],
           ['완료(사입비 부과)', `${totals.completed}건`, 'text-emerald-400'],
@@ -171,8 +171,9 @@ function CollectionEntryModal({
   const [saving, setSaving] = useState(false);
 
   const group = groups.find(g => compact(g.store) === compact(getBillingStore(store, rules)));
-  const due = group?.balance ?? 0;
-  const remaining = Math.max(0, due - (Number(deposit) || 0) - (Number(cash) || 0));
+  const balance = group?.balance ?? 0; // 음수면 이미 더 받은 상태
+  const due = Math.max(0, balance); // 입력칸을 채울 때 쓰는 받을 금액
+  const remaining = balance - (Number(deposit) || 0) - (Number(cash) || 0); // 음수면 초과 입금
   const manager = user?.name || user?.username || '관리자';
   const subs = store ? getSubStores(store, rules) : [];
 
@@ -228,13 +229,14 @@ function CollectionEntryModal({
           <div>
             <p className="text-sm font-bold text-gray-100">{store || '거래처를 선택하세요'}</p>
             <p className="mt-0.5 text-[11px] text-indigo-300">
-              미수금 잔액 {group && group.carry > 0 && <Badge className="ml-1 bg-sky-900 text-sky-200">이월 {formatMoney(group.carry)} 포함</Badge>}
+              미수금 잔액 {group && group.carry !== 0 && <Badge className="ml-1 bg-sky-900 text-sky-200">이월 {formatMoney(group.carry)} 포함</Badge>}
               {group && group.completedCount > 0 && <Badge className="ml-1 bg-emerald-900 text-emerald-200">완료 {group.completedCount}건</Badge>}
               {subs.length > 0 && <Badge className="ml-1 bg-violet-900 text-violet-200">종속 {subs.length}곳 포함</Badge>}
             </p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-lg font-bold text-rose-400">{formatMoney(due)}</p>
+            <p className={cx('font-mono text-lg font-bold', balance < 0 ? 'text-sky-300' : 'text-rose-400')}>{formatMoney(balance)}</p>
+            {balance < 0 && <p className="text-[11px] text-sky-300">초과 입금 (다음에 받을 때 빼 줍니다)</p>}
             {group && group.fee > 0 && <p className="text-[11px] text-indigo-300">사입비 {formatMoney(group.fee)} 포함</p>}
             {group?.isMonthly && <p className="text-[11px] text-emerald-400">월사입 - 사입비 제외</p>}
           </div>
@@ -277,7 +279,7 @@ function CollectionEntryModal({
             <Button size="sm" onClick={() => { setCash(String(due)); setDeposit(''); }}>수금 전액</Button>
           </div>
           <p className="rounded-lg bg-gray-950 px-2 py-1 text-[11px] font-bold text-gray-300">
-            처리 후 미수 <span className={cx('ml-1 font-mono text-sm', remaining > 0 ? 'text-amber-400' : 'text-emerald-400')}>{formatMoney(remaining)}</span>
+            처리 후 미수 <span className={cx('ml-1 font-mono text-sm', remaining > 0 ? 'text-amber-400' : remaining < 0 ? 'text-sky-300' : 'text-emerald-400')}>{formatMoney(remaining)}</span>
           </p>
         </div>
 
