@@ -28,7 +28,7 @@ export function Button({
   className,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: Tone; size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'px-2.5 py-1 text-[11px]', md: 'px-3.5 py-2 text-xs', lg: 'px-5 py-3 text-sm' };
+  const sizes = { sm: 'min-h-[34px] px-3 py-1.5 text-[11px]', md: 'min-h-[40px] px-3.5 py-2 text-xs', lg: 'min-h-[48px] px-5 py-3 text-sm' };
   return (
     <button
       type="button"
@@ -83,7 +83,7 @@ export function CloseButton({ onClick, label = '닫기' }: { onClick: () => void
     <button
       type="button"
       onClick={onClick}
-      className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2.5 py-1.5 text-xs font-bold text-gray-200 transition"
+      className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 min-h-[40px] px-3 py-1.5 text-xs font-bold text-gray-200 transition"
     >
       <X className="w-4 h-4" />
       {label}

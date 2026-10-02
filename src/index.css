@@ -24,3 +24,20 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.8);
 }
+
+/* 모바일: 입력칸 글자가 16px 미만이면 아이폰이 입력할 때 화면을 확대해 버린다 */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* 터치 화면: 손가락으로 누르기 편하게 입력칸 · 선택칸 높이를 확보 */
+@media (pointer: coarse) {
+  select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+    min-height: 40px;
+  }
+}
