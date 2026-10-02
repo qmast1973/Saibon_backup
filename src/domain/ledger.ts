@@ -161,7 +161,9 @@ export function applyStatus(t: Transaction, nextStatus: string, managerName: str
 export const STAT_FILTERS: { key: string; label: string; unit: string; tone: string; test: (t: Transaction) => boolean }[] = [
   { key: 'all', label: '총 주문건수', unit: '건', tone: 'slate', test: () => true },
   { key: 'completed', label: '완료건수', unit: '건', tone: 'emerald', test: t => hasStatus(t) },
-  { key: 'uncompleted', label: '처리 대기', unit: '건', tone: 'amber', test: t => !hasStatus(t) },
+  { key: 'uncompleted', label: '미처리', unit: '건', tone: 'amber', test: t => !hasStatus(t) },
+  { key: 'hasItems', label: '갯수 있음', unit: '건', tone: 'cyan', test: t => hasStatus(t) && (Number(t.itemCount) || 0) > 0 },
+  { key: 'noItems', label: '갯수 없음', unit: '건', tone: 'slate', test: t => hasStatus(t) && !((Number(t.itemCount) || 0) > 0) },
   { key: 'gte2', label: '물건 2개이상', unit: '건', tone: 'indigo', test: t => (Number(t.itemCount) || 0) >= 2 },
   { key: 'none', label: '주문/물건 없음', unit: '건', tone: 'slate', test: t => ['주문없음', '물건없음'].includes(String(t.status || '').trim()) },
   { key: 'allMisong', label: '올미송(결제)', unit: '건', tone: 'yellow', test: t => t.status === '올미송(결제만)' },
