@@ -26,3 +26,11 @@ describe('엑셀 금액 단위', () => {
     expect(toThousandUnit([row(0)]).convertedFromWon).toBe(false);
   });
 });
+
+describe('백업 복원 금액 단위', () => {
+  it('원 단위로 기록된 주문 목록도 천원 단위로 바꾼다', () => {
+    const { rows, convertedFromWon } = toThousandUnit([{ expense: 35000, income: 0 }, { expense: 0, income: 20000 }]);
+    expect(convertedFromWon).toBe(true);
+    expect(rows).toEqual([{ expense: 35, income: 0 }, { expense: 0, income: 20 }]);
+  });
+});
