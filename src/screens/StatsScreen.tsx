@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Download, ListOrdered } from 'lucide-react';
 import type { Nav } from '../App';
 import { exportWorkday } from '../domain/excel';
-import { STAT_FILTERS, totalItemCount } from '../domain/ledger';
+import { COUNT_ZERO_STATUSES, STAT_FILTERS, totalItemCount } from '../domain/ledger';
 import { applyStoreOrder, buildStoreGroups, moveInOrder } from '../domain/storeGroups';
 import { useApp } from '../state/AppContext';
 import { StoreGroupTable } from '../components/StoreGroupTable';
@@ -47,6 +47,19 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     ];
   }, [f.scoped, itemTotal]);
 
+  // 갯수 없음(처리됐는데 갯수 0)이 어떤 상태에서 나왔는지. 올미송 · 반품만 · 매입처리 · 주문/물건없음은 갯수 0이 정상이고, 그 밖의 상태는 확인이 필요하다.
+  const zeroBreakdown = useMemo(() => {
+    const rows = f.scoped.filter(STAT_FILTERS.find(x => x.key === 'noItems')!.test);
+    const map = new Map<string, number>();
+    for (const t of rows) {
+      const st = String(t.status || '').trim();
+      map.set(st, (map.get(st) || 0) + 1);
+    }
+    const entries = [...map].map(([status, count]) => ({ status, count, normal: COUNT_ZERO_STATUSES.has(status) }));
+    entries.sort((a, b) => Number(b.normal) - Number(a.normal) || b.count - a.count);
+    return { total: rows.length, entries, odd: entries.filter(e => !e.normal).reduce((n, e) => n + e.count, 0) };
+  }, [f.scoped]);
+
   const list = useMemo(() => {
     const test = STAT_FILTERS.find(s => s.key === filter)?.test ?? (() => true);
     return f.scoped.filter(test);
@@ -90,6 +103,20 @@ export function StatsScreen({ nav }: { nav: Nav }) {
               <span><b className="text-gray-100">{c.label}</b> {c.text}</span>
             </p>
           ))}
+          {zeroBreakdown.total > 0 && (
+            <p className="flex items-start gap-1.5 border-t border-gray-800 pt-1">
+              <span className={cx('mt-px shrink-0 font-black', zeroBreakdown.odd ? 'text-amber-400' : 'text-emerald-400')}>{zeroBreakdown.odd ? '!' : '✓'}</span>
+              <span>
+                <b className="text-gray-100">갯수 없음 {zeroBreakdown.total}건</b> ={' '}
+                {zeroBreakdown.entries.map((e, i) => (
+                  <span key={e.status || '(상태없음)'} className={e.normal ? '' : 'font-bold text-amber-300'}>
+                    {i > 0 && ' + '}{e.normal ? '' : '⚠ '}{e.status || '(상태 없음)'} {e.count}
+                  </span>
+                ))}
+                {zeroBreakdown.odd > 0 && <span className="block text-amber-300">⚠ 표시 {zeroBreakdown.odd}건은 보통 갯수가 1 이상이어야 하는 상태입니다. "갯수 없음" 카드를 눌러 해당 주문의 갯수를 확인하세요.</span>}
+              </span>
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-4 gap-1 text-center sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9">
           {cards.map(c => (
