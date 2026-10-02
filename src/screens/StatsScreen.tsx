@@ -24,6 +24,10 @@ const TONES: Record<string, string> = {
   sky: 'border-sky-700 bg-sky-950/60 text-sky-300',
 };
 
+// 카드 배치. '_'는 한 칸 띄우기.
+const ROW_TOP = ['all', 'completed', 'uncompleted', '_', 'hasItems', 'noItems'];
+const ROW_STATUS = ['gte2', 'misongFind', 'exchange', 'exchangePurchase', 'sendBack', '_', 'none', 'allMisong', 'returnOnly', 'purchase'];
+
 /** 갯수 집계: 처리 상태별 건수와 거래처별 물건 갯수 */
 export function StatsScreen({ nav }: { nav: Nav }) {
   const { user, users, rules, includeFee, saveStoreOrder, notify } = useApp();
@@ -64,6 +68,19 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     const test = STAT_FILTERS.find(s => s.key === filter)?.test ?? (() => true);
     return f.scoped.filter(test);
   }, [f.scoped, filter]);
+
+  // 첫 줄의 빈칸은 항상, 둘째 줄의 빈칸은 데스크톱에서만 보인다 (모바일 둘째 줄은 5칸씩 두 줄로 나뉨)
+  const card = (key: string, i: number, hideGapOnMobile = false) => {
+    if (key === '_') return <div key={`gap${i}`} aria-hidden className={hideGapOnMobile ? 'hidden sm:block' : ''} />;
+    const c = cards.find(x => x.key === key);
+    if (!c) return null;
+    return (
+      <button key={c.key} type="button" onClick={() => setFilter(c.key)} className={cx('min-h-[44px] rounded-md border px-0.5 py-1 transition', TONES[c.tone], filter === c.key ? 'ring-2 ring-white/40' : 'opacity-70 hover:opacity-100')}>
+        <span className="block text-[9px] font-semibold leading-tight tracking-tight">{c.label}</span>
+        <span className="text-sm font-black">{c.value}<small className="ml-0.5 text-[9px] font-normal">{c.unit}</small></span>
+      </button>
+    );
+  };
 
   const savedOrder = user!.storeOrder;
   // 본인이 정한 거래처 순서(들르는 순서)대로 보여 준다. 정한 적이 없으면 기본 순서.
@@ -118,13 +135,12 @@ export function StatsScreen({ nav }: { nav: Nav }) {
             </p>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-1 text-center sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9">
-          {cards.map(c => (
-            <button key={c.key} type="button" onClick={() => setFilter(c.key)} className={cx('min-h-[44px] rounded-md border px-0.5 py-1 transition', TONES[c.tone], filter === c.key ? 'ring-2 ring-white/40' : 'opacity-70 hover:opacity-100')}>
-              <span className="block text-[9px] font-semibold leading-tight tracking-tight">{c.label}</span>
-              <span className="text-sm font-black">{c.value}<small className="ml-0.5 text-[9px] font-normal">{c.unit}</small></span>
-            </button>
-          ))}
+        {/* 첫 줄: 건수 / (빈칸) / 갯수 있음 · 없음. 둘째 줄: 물건 있는 상태들 / (빈칸) / 물건 없는 상태들 */}
+        <div className="grid grid-cols-6 gap-1 text-center">
+          {ROW_TOP.map((key, i) => card(key, i))}
+        </div>
+        <div className="mt-1 grid grid-cols-5 gap-1 text-center sm:grid-cols-10">
+          {ROW_STATUS.map((key, i) => card(key, i, true))}
         </div>
       </div>
 
