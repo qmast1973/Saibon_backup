@@ -3,7 +3,7 @@ import type { Transaction } from '../types';
 import { normalizeDate } from '../domain/dates';
 import { parseAmount } from '../domain/format';
 import { DEPOSIT_MARKET, RECEIVABLE_MARKET, normalizeMarket } from '../domain/markets';
-import { IS_DEMO, rtdb, withTimeout, write } from './firebase';
+import { IS_DEMO, auth, rtdb, withTimeout, write } from './firebase';
 
 /**
  * RTDB 저장 형식: orders/{YYYY-MM-DD}/{orderId}
@@ -216,7 +216,8 @@ type EmptyRef = Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>;
 /** 날짜 키 목록만 가볍게 받는다 (REST shallow). 규칙상 막히면 null */
 async function fetchDateKeys(): Promise<string[] | null> {
   try {
-    const res = await withTimeout(fetch(`${rtdb.app.options.databaseURL}/orders.json?shallow=true`), 30000, '날짜 목록 조회');
+    const token = await auth.currentUser?.getIdToken().catch(() => '');
+    const res = await withTimeout(fetch(`${rtdb.app.options.databaseURL}/orders.json?shallow=true${token ? `&auth=${token}` : ''}`), 30000, '날짜 목록 조회');
     if (!res.ok) return null;
     return Object.keys((await res.json()) || {}).sort();
   } catch {
