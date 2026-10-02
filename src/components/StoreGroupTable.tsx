@@ -29,22 +29,22 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
     <>
       <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] whitespace-nowrap text-left text-sm text-gray-300">
+          <table className="w-full sm:min-w-[620px] whitespace-nowrap text-left text-sm text-gray-300">
             <thead className="border-b border-gray-800 bg-gray-800/50 text-xs text-gray-400">
               <tr>
-                <th className="p-3 font-semibold">{isCollection ? '지역' : '상가'}</th>
+                <th className="hidden p-3 font-semibold sm:table-cell">{isCollection ? '지역' : '상가'}</th>
                 <th className="p-3 font-semibold">상호</th>
-                <th className="p-3 text-center font-semibold">주문</th>
+                <th className="hidden p-3 text-center font-semibold sm:table-cell">주문</th>
                 {isCollection ? (
                   <>
-                    <th className="p-3 text-right font-semibold">청구(사입비 포함)</th>
-                    <th className="p-3 text-right font-semibold">입금</th>
-                    <th className="p-3 text-right font-semibold">미수금</th>
+                    <th className="p-2 text-right font-semibold sm:p-3">청구<span className="hidden sm:inline">(사입비 포함)</span></th>
+                    <th className="p-2 text-right font-semibold sm:p-3">입금</th>
+                    <th className="p-2 text-right font-semibold sm:p-3">미수금</th>
                   </>
                 ) : (
                   <>
-                    <th className="p-3 text-right font-semibold">대납 합계</th>
-                    <th className="p-3 text-right font-semibold">물건 갯수</th>
+                    <th className="p-2 text-right font-semibold sm:p-3">대납 합계</th>
+                    <th className="p-2 text-right font-semibold sm:p-3">물건 갯수</th>
                   </>
                 )}
               </tr>
@@ -59,8 +59,8 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                 return (
                   <Fragment key={g.store}>
                     <tr className="cursor-pointer transition hover:bg-indigo-950/40" onClick={() => setDetail({ store: g.store, sub: null })}>
-                      <td className="p-3 font-semibold">{isCollection ? g.region : g.rows[0]?.market || '-'}</td>
-                      <td className="p-3 font-bold text-gray-100">
+                      <td className="hidden p-3 font-semibold sm:table-cell">{isCollection ? g.region : g.rows[0]?.market || '-'}</td>
+                      <td className="whitespace-normal p-2 font-bold text-gray-100 sm:p-3">
                         <span className="flex flex-wrap items-center gap-1.5">
                           {g.store}
                           {subs.length > 0 && (
@@ -70,31 +70,32 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                                 e.stopPropagation();
                                 setExpanded(prev => ({ ...prev, [g.store]: !prev[g.store] }));
                               }}
-                              className="inline-flex items-center gap-1 rounded-md border border-violet-700 bg-violet-950 px-2 py-0.5 text-[11px] font-bold text-violet-200"
+                              className="inline-flex min-h-[32px] items-center gap-1 whitespace-nowrap rounded-md border border-violet-700 bg-violet-950 px-2.5 py-1 text-[11px] font-bold text-violet-200"
                             >
                               <Layers className="h-3 w-3" />종속 {subs.length}곳{open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                             </button>
                           )}
                         </span>
+                        <span className="mt-0.5 block text-[10px] font-normal text-gray-500 sm:hidden">{isCollection ? g.region : g.rows[0]?.market || ''} · {g.orderCount}건</span>
                       </td>
-                      <td className="p-3 text-center">
+                      <td className="hidden p-3 text-center sm:table-cell">
                         <b className="text-gray-100">{g.orderCount}건</b>
                         <span className="block whitespace-nowrap text-[10px]"><span className="text-emerald-400">완료 {g.completedCount}</span> / <span className="text-amber-400">미처리 {g.unprocessedCount}</span></span>
                       </td>
                       {isCollection ? (
                         <>
-                          <td className="p-3 text-right font-mono">
+                          <td className="p-2 text-right font-mono text-xs sm:p-3 sm:text-sm">
                             <span className="text-rose-400">{formatMoney(g.billed)}</span>
                             {g.fee > 0 && <span className="block font-sans text-[10px] text-indigo-300">+사입비 {formatMoney(g.fee)}</span>}
                             {g.isMonthly && <span className="mt-0.5 inline-block rounded border border-emerald-700 px-1 font-sans text-[10px] text-emerald-400">월사입{g.monthlyAmount ? ` ${g.monthlyAmount.toLocaleString()}원` : ''} 제외</span>}
                           </td>
-                          <td className="p-3 text-right font-mono text-emerald-400">{formatMoney(g.paid)}</td>
-                          <td className={cx('p-3 text-right font-mono font-bold', g.balance > 0 ? 'text-amber-400' : 'text-gray-500')}>{formatMoney(g.balance)}</td>
+                          <td className="p-2 text-right font-mono text-xs text-emerald-400 sm:p-3 sm:text-sm">{formatMoney(g.paid)}</td>
+                          <td className={cx('p-2 text-right font-mono text-xs font-bold sm:p-3 sm:text-sm', g.balance > 0 ? 'text-amber-400' : 'text-gray-500')}>{formatMoney(g.balance)}</td>
                         </>
                       ) : (
                         <>
-                          <td className="p-3 text-right font-mono text-rose-400">{formatMoney(g.billed)}</td>
-                          <td className="p-3 text-right font-bold text-emerald-400">{g.itemCount}개</td>
+                          <td className="p-2 text-right font-mono text-xs sm:p-3 sm:text-sm text-rose-400">{formatMoney(g.billed)}</td>
+                          <td className="p-2 text-right text-xs font-bold text-emerald-400 sm:p-3 sm:text-sm">{g.itemCount}개</td>
                         </>
                       )}
                     </tr>
@@ -110,9 +111,9 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                       const orders = subRows.filter(isOrder);
                       return (
                         <tr key={sub} className="cursor-pointer bg-violet-950/20 text-xs hover:bg-violet-900/30" onClick={() => setDetail({ store: g.store, sub })}>
-                          <td className="p-2.5 pl-6 text-gray-500">↳</td>
+                          <td className="hidden p-2.5 pl-6 text-gray-500 sm:table-cell">↳</td>
                           <td className="p-2.5"><span className="flex items-center gap-1.5 font-semibold text-violet-200"><Store className="h-3 w-3 text-cyan-400" />{sub}</span></td>
-                          <td className="p-2.5 text-center">{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
+                          <td className="hidden p-2.5 text-center sm:table-cell">{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
                           {isCollection ? (
                             <>
                               <td className="p-2.5 text-right font-mono text-rose-400">{formatMoney(sums.billed)}</td>

@@ -83,7 +83,7 @@ export function WorkdayScreen({ nav }: { nav: Nav }) {
         </div>
         <div className="grid grid-cols-3 gap-1.5 text-center">
           {FILTERS.map(x => (
-            <button key={x.key} type="button" onClick={() => setFilter(x.key)} className={cx('rounded-lg border py-1.5 transition', x.tone, filter === x.key ? 'ring-2 ring-white/40' : 'opacity-70')}>
+            <button key={x.key} type="button" onClick={() => setFilter(x.key)} className={cx('rounded-lg border min-h-[48px] py-1.5 transition', x.tone, filter === x.key ? 'ring-2 ring-white/40' : 'opacity-70')}>
               <span className="block text-[10px] font-semibold">{x.label}</span>
               <span className="text-base font-black">{f.scoped.filter(x.test).length}<small className="ml-0.5 text-[10px] font-normal">건</small></span>
             </button>
@@ -138,12 +138,12 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-end justify-end gap-3">
-        <label className="flex items-center gap-1 text-[11px] font-semibold text-red-300">
-          <input type="checkbox" checked={!!t.isReturn} onChange={e => saveField({ isReturn: e.target.checked })} className="accent-red-500" />
+      <div className="mb-3 flex flex-wrap items-end gap-2.5">
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-red-900/70 bg-red-950/30 px-3 text-xs font-bold text-red-300">
+          <input type="checkbox" checked={!!t.isReturn} onChange={e => saveField({ isReturn: e.target.checked })} className="h-5 w-5 accent-red-500" />
           반품 있음
         </label>
-        <label className="flex items-center gap-2 text-sm font-bold text-gray-300">
+        <label className="flex flex-col text-[11px] font-semibold text-gray-400">
           물건갯수
           <input
             key={`c${t.itemCount}`}
@@ -152,10 +152,10 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
             defaultValue={t.itemCount ?? 0}
             onBlur={e => Number(e.target.value) !== (t.itemCount ?? 0) && saveField({ itemCount: Number(e.target.value) || 0 })}
             onKeyDown={blurOnEnter}
-            className="w-16 rounded-lg border border-gray-700 bg-gray-800 p-1.5 text-center text-base font-black text-white outline-none focus:ring-2 focus:ring-sky-500"
+            className="mt-0.5 min-h-[44px] w-20 rounded-lg border border-gray-700 bg-gray-800 p-1.5 text-center text-base font-black text-white outline-none focus:ring-2 focus:ring-sky-500"
           />
         </label>
-        <label className="flex flex-col items-end text-[10px] font-semibold text-gray-400">
+        <label className="flex min-w-[150px] flex-1 flex-col text-[11px] font-semibold text-gray-400">
           대납금
           <span className="relative mt-0.5 flex items-center">
             <input
@@ -165,7 +165,7 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
               onBlur={e => parseAmount(e.target.value) !== (t.expense || 0) && saveField({ expense: parseAmount(e.target.value) })}
               onKeyDown={blurOnEnter}
               placeholder="입력"
-              className="w-32 rounded-lg border border-gray-700 bg-gray-800 p-1.5 pr-12 text-right text-base font-black text-amber-400 outline-none focus:ring-2 focus:ring-amber-500"
+              className="min-h-[44px] w-full rounded-lg border border-gray-700 bg-gray-800 p-1.5 pr-14 text-right text-base font-black text-amber-400 outline-none focus:ring-2 focus:ring-amber-500"
             />
             <span className="pointer-events-none absolute right-2 text-xs text-gray-400">,000원</span>
           </span>
@@ -189,12 +189,12 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
               const disabled = option === '매입처리' && !t.isReturn;
               return (
                 <button key={option} type="button" disabled={disabled} onClick={() => setStatus(option)}
-                  className={cx('min-w-[64px] flex-1 rounded-lg border py-2.5 text-xs font-bold shadow-md hover:brightness-110 disabled:opacity-40', OPTION_STYLE[option] || 'border-gray-600 bg-gray-700 text-white')}>
+                  className={cx('min-w-[64px] flex-1 rounded-lg border min-h-[48px] py-2.5 text-sm font-bold shadow-md hover:brightness-110 disabled:opacity-40', OPTION_STYLE[option] || 'border-gray-600 bg-gray-700 text-white')}>
                   {option}
                 </button>
               );
             })}
-            <button type="button" onClick={() => setOpenGroup(null)} className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-300">취소</button>
+            <button type="button" onClick={() => setOpenGroup(null)} className="rounded-lg border border-gray-700 bg-gray-900 min-h-[48px] px-4 py-2 text-xs font-bold text-gray-300">취소</button>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -207,7 +207,7 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
                   type="button"
                   disabled={disabled}
                   onClick={() => (active ? setStatus(t.status || '') : setOpenGroup(b.group))}
-                  className={cx('flex-1 rounded-lg border py-2.5 text-xs font-bold transition disabled:opacity-30', active ? GROUP_STYLE[b.group].active : GROUP_STYLE[b.group].idle)}
+                  className={cx('min-h-[48px] flex-1 rounded-lg border py-2.5 text-sm font-bold transition disabled:opacity-30', active ? GROUP_STYLE[b.group].active : GROUP_STYLE[b.group].idle)}
                 >
                   {active ? t.status : b.label}
                 </button>

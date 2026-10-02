@@ -150,7 +150,7 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
             ) : locked || (isMerchant && !!user?.storeName) ? (
               <Input value={store} disabled />
             ) : (
-              <StoreSearch value={store} onChange={setStore} knownStores={stores} rules={rules} placeholder="상호 (초성 가능)" required />
+              <StoreSearch value={store} onChange={setStore} knownStores={stores} rules={rules} placeholder="상호 검색" required />
             )}
           </Field>
         </div>
@@ -166,15 +166,15 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
                   list={listId}
                   value={r.market}
                   disabled={locked}
-                  placeholder="디오트, APM, 청평"
+                  placeholder="건물명"
                   onChange={e => setRow(i, { market: e.target.value })}
                   onBlur={e => setRow(i, { market: normalizeMarket(e.target.value, r.room) })}
                 />
-                <Input value={r.floor} disabled={locked} placeholder="3, 지1" onChange={e => setRow(i, { floor: e.target.value })} />
+                <Input value={r.floor} disabled={locked} placeholder="층" onChange={e => setRow(i, { floor: e.target.value })} />
                 <Input
                   value={r.room}
                   disabled={locked}
-                  placeholder="25"
+                  placeholder="호수"
                   onChange={e => setRow(i, { room: e.target.value })}
                   onBlur={e => r.market && setRow(i, { market: normalizeMarket(r.market, e.target.value) })}
                 />
