@@ -5,6 +5,7 @@ import type { Nav } from '../App';
 import { exportWorkday } from '../domain/excel';
 import { formatFloor, formatMoney, formatRoom, parseAmount } from '../domain/format';
 import { applyStatus, hasStatus, STATUS_BUTTONS, statusGroup, type StatusGroup } from '../domain/ledger';
+import { regionLabel } from '../domain/storeGroups';
 import { useApp } from '../state/AppContext';
 import { Badge, Button, EmptyState, Screen, cx } from '../components/ui';
 import { DayFilterBar, useDayFilter } from './useDayFilter';
@@ -107,7 +108,8 @@ export function WorkdayScreen({ nav }: { nav: Nav }) {
 }
 
 const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; me: User }) {
-  const { saveOrders, patchOrderLocal, notify } = useApp();
+  const { saveOrders, patchOrderLocal, notify, markets } = useApp();
+  const region = regionLabel(t, markets);
   const [openGroup, setOpenGroup] = useState<StatusGroup | null>(null);
   const group = statusGroup(t.status);
 
@@ -130,7 +132,7 @@ const WorkOrderCard = memo(function WorkOrderCard({ t, me }: { t: Transaction; m
             🏢 {t.market || '건물 미지정'} <span className="text-yellow-300">{formatFloor(t.floor)}</span> <span className="font-mono text-white">{formatRoom(t.room)}</span>
           </span>
           <h2 className="text-lg font-black text-white">{t.store || '상호 미등록'}</h2>
-          {t.region && <Badge className="bg-violet-900/60 text-violet-200">{t.region}</Badge>}
+          {region && <Badge className="bg-violet-900/60 text-violet-200">{region}</Badge>}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <Badge className={group ? GROUP_STYLE[group].badge : 'bg-amber-950 text-amber-400'}>{hasStatus(t) ? `✓ ${t.status}` : '처리 대기'}</Badge>

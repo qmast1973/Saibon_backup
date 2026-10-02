@@ -169,3 +169,33 @@ describe('거래처 순서 직접 정하기', () => {
     expect(names(applyStoreOrder(g('가', '나', '다'), moved))).toEqual(['가', '다', '나']);
   });
 });
+
+import { cleanRegion } from './storeGroups';
+describe('수금 목록의 지역 칸', () => {
+  const buildings = new Set(['APM', '디오트', '청평화']);
+
+  it('합성동 · 창원 같은 지역은 그대로 두고, 비었거나 미지정이면 빈 값', () => {
+    expect(cleanRegion('합성동', buildings)).toBe('합성동');
+    expect(cleanRegion('창원', buildings)).toBe('창원');
+    expect(cleanRegion('', buildings)).toBe('');
+    expect(cleanRegion(undefined, buildings)).toBe('');
+    expect(cleanRegion('미지정', buildings)).toBe('');
+  });
+
+  it('서울 건물 이름(별칭 포함)이 지역에 들어가 있으면 빈 값', () => {
+    expect(cleanRegion('APM', buildings)).toBe('');
+    expect(cleanRegion('청평', buildings)).toBe(''); // 별칭 → 청평화
+    expect(cleanRegion('디오트', buildings)).toBe('');
+  });
+
+  it('거래처 줄의 지역은 건물 이름을 건너뛰고 첫 진짜 지역을 쓴다. 없으면 빈 값', () => {
+    const rows = [
+      order('2026-10-02', '상호A', 10, { region: 'APM', market: 'APM' }),
+      order('2026-10-02', '상호A', 10, { region: '창원', market: '청평화' }),
+      order('2026-10-02', '상호B', 10, { region: '디오트', market: '디오트' }),
+      order('2026-10-02', '상호C', 10, { region: '' }),
+    ];
+    const groups = buildStoreGroups(rows, { mode: 'collection', ...opts });
+    expect(groups.map(g => [g.store, g.region])).toEqual([['상호A', '창원'], ['상호B', ''], ['상호C', '']]); // 지역 있는 줄이 먼저
+  });
+});
