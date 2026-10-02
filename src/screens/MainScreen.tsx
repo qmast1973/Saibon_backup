@@ -92,52 +92,49 @@ export function MainScreen({ nav }: { nav: Nav }) {
         </section>
       )}
 
-      {searching && <SearchResults rows={filtered} loading={loadingOlder} failed={olderFailed} onPick={nav.setDate} />}
+      {searching && <SearchResults rows={filtered} loading={loadingOlder} failed={olderFailed} onPick={nav.setDate} selected={nav.date} />}
 
       <CalendarView nav={nav} orders={filtered} />
     </main>
   );
 }
 
-/** 검색 결과 목록 (전체 기간, 최근 날짜부터). 누르면 그 날짜로 이동한다. */
-function SearchResults({ rows, loading, failed, onPick }: { rows: Transaction[]; loading: boolean; failed: boolean; onPick: (date: string) => void }) {
-  const [limit, setLimit] = useState(50);
-  useEffect(() => setLimit(50), [rows]);
-  const sorted = useMemo(() => [...rows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [rows]);
+/** 검색 결과: 목록 대신 날짜별 건수만 보여 주고, 누르면 그 날짜로 이동한다 (최근 날짜순). */
+function SearchResults({ rows, loading, failed, onPick, selected }: { rows: Transaction[]; loading: boolean; failed: boolean; onPick: (date: string) => void; selected: string }) {
+  const [limit, setLimit] = useState(30);
+  useEffect(() => setLimit(30), [rows]);
+  const byDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of rows) if (t.date) map.set(t.date, (map.get(t.date) || 0) + 1);
+    return [...map].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  }, [rows]);
 
   return (
     <section className="rounded-2xl border border-indigo-900/70 bg-indigo-950/40 p-3">
       <p className="mb-2 flex flex-wrap items-center gap-x-2 text-xs font-bold text-indigo-200">
-        검색 결과 {rows.length}건 <span className="font-normal text-indigo-300/80">(전체 기간, 최근 날짜순)</span>
+        검색 결과 {rows.length}건 · {byDate.length}일 <span className="font-normal text-indigo-300/80">(전체 기간) 건수를 누르면 그 날짜로 이동합니다</span>
         {loading && <span className="font-normal text-amber-300">이전 기록 불러오는 중...</span>}
         {failed && <span className="font-normal text-rose-300">90일 이전 기록은 불러오지 못했습니다</span>}
       </p>
-      {sorted.length === 0 ? (
-        <p className="py-3 text-center text-xs text-gray-400">{loading ? '찾는 중입니다...' : '검색 결과가 없습니다.'}</p>
+      {byDate.length === 0 ? (
+        <p className="py-2 text-center text-xs text-gray-400">{loading ? '찾는 중입니다...' : '검색 결과가 없습니다.'}</p>
       ) : (
-        <ul className="max-h-80 space-y-1.5 overflow-y-auto overscroll-contain">
-          {sorted.slice(0, limit).map(t => (
-            <li key={t.id || `${t.date}-${t.store}-${t.room}`}>
-              <button type="button" onClick={() => onPick(t.date)} className="flex min-h-[48px] w-full flex-col gap-0.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-left hover:border-indigo-600">
-                <span className="flex flex-wrap items-center gap-x-2 text-xs">
-                  <b className="font-mono text-indigo-300">{t.date}</b>
-                  <b className="text-sm text-gray-100">{t.store || '상호 미지정'}</b>
-                  {t.status && <Badge className="bg-emerald-900 text-emerald-200">{t.status}</Badge>}
-                </span>
-                <span className="text-[11px] text-gray-400">
-                  {formatLocation(t) || '-'}
-                  {t.remark ? ` · ${t.remark}` : ''}
-                  {t.manager ? ` · ${t.manager}` : ''}
-                  {t.expense ? ` · ${formatMoney(t.expense)}` : ''}
-                </span>
-              </button>
-            </li>
+        <div className="flex flex-wrap gap-1.5">
+          {byDate.slice(0, limit).map(([date, count]) => (
+            <button
+              key={date}
+              type="button"
+              onClick={() => onPick(date)}
+              className={cx('min-h-[44px] rounded-xl border px-3 text-xs font-bold', date === selected ? 'border-indigo-400 bg-indigo-700 text-white' : 'border-gray-700 bg-gray-950 text-gray-200 hover:border-indigo-500')}
+            >
+              <span className="font-mono">{date}</span> <span className="ml-1 text-sm text-indigo-300 underline">{count}건</span>
+            </button>
           ))}
-        </ul>
+        </div>
       )}
-      {sorted.length > limit && (
-        <button type="button" onClick={() => setLimit(l => l + 100)} className="mt-2 min-h-[44px] w-full rounded-xl border border-gray-700 bg-gray-900 text-xs font-bold text-gray-200">
-          더 보기 ({sorted.length - limit}건 남음)
+      {byDate.length > limit && (
+        <button type="button" onClick={() => setLimit(l => l + 60)} className="mt-2 min-h-[44px] w-full rounded-xl border border-gray-700 bg-gray-900 text-xs font-bold text-gray-200">
+          더 보기 ({byDate.length - limit}일 남음)
         </button>
       )}
     </section>
