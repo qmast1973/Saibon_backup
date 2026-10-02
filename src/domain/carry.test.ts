@@ -80,4 +80,21 @@ describe('이월 미수금', () => {
     const rows = [order('2026-10-01', '상호M', 10, { status: '주문찾기' })];
     expect(computeCarryOver(rows, '2026-10-02', { ...opts, users }).get('상호M')?.amount).toBe(10);
   });
+
+  it('묶인 거래처는 어느 한 곳에 입금해도 대표거래처 합계에서 빠진다 (초과 입금 포함)', () => {
+    const rules = [
+      { id: 'g1', storeName: '상호A-1', groupName: '대표A', matchType: 'exact' as const, effectiveFrom: '' },
+      { id: 'g2', storeName: '상호A-2', groupName: '대표A', matchType: 'exact' as const, effectiveFrom: '' },
+    ];
+    const o = { ...opts, rules };
+    const today = [order('2026-10-02', '상호A-1', 10), order('2026-10-02', '상호A-2', 20), deposit('2026-10-02', '상호A-1', 40)];
+    const groups = buildStoreGroups(today, { mode: 'collection', ...o });
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ store: '대표A', billed: 30, paid: 40, balance: -10 });
+
+    // 다음 날로도 대표거래처 하나의 음수 이월로 넘어간다
+    const carry = computeCarryOver(today, '2026-10-03', o);
+    expect([...carry.keys()]).toEqual(['대표A']);
+    expect(carry.get('대표A')?.amount).toBe(-10);
+  });
 });
