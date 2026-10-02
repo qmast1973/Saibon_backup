@@ -225,8 +225,9 @@ async function fetchDateKeys(): Promise<string[] | null> {
   }
 }
 
-function collect(data: Record<string, Record<string, Partial<OrderRecord>>>, orders: Transaction[], empties: EmptyRef[]) {
+function collect(data: Record<string, Record<string, Partial<OrderRecord>>>, orders: Transaction[], empties: EmptyRef[], beforeDate?: string) {
   for (const [dateKey, day] of Object.entries(data || {})) {
+    if (beforeDate && dateKey >= beforeDate) continue;
     for (const [orderId, record] of Object.entries(day || {})) {
       const tx = record ? decodeOrder(dateKey, orderId, record) : null;
       if (tx) orders.push(tx);
@@ -239,7 +240,10 @@ function collect(data: Record<string, Record<string, Partial<OrderRecord>>>, ord
  * 서버 전체 주문. 데이터가 커서 한 번에 받으면 시간 초과가 나므로 달마다 나눠 받는다.
  * onProgress(받은 달 수, 전체 달 수)로 진행 상황을 알린다.
  */
-export async function fetchAllOrders(onProgress?: (done: number, total: number) => void): Promise<{ orders: Transaction[]; empties: EmptyRef[] }> {
+export async function fetchAllOrders(
+  onProgress?: (done: number, total: number) => void,
+  beforeDate?: string, // 이 날짜 '이전' 기록만 (실시간으로 보고 있는 최근 기간 밖의 오래된 기록용)
+): Promise<{ orders: Transaction[]; empties: EmptyRef[] }> {
   if (IS_DEMO) throw new Error('미리보기에서는 서버 데이터를 불러올 수 없습니다.');
   const orders: Transaction[] = [];
   const empties: EmptyRef[] = [];
@@ -248,16 +252,16 @@ export async function fetchAllOrders(onProgress?: (done: number, total: number) 
   if (!keys) {
     // 날짜 목록을 못 받으면 예전처럼 한 번에 받되 넉넉히 기다린다
     const snapshot = await withTimeout(get(ref(rtdb, 'orders')), 180000, '전체 주문 조회');
-    collect(snapshot.val(), orders, empties);
+    collect(snapshot.val(), orders, empties, beforeDate);
     return { orders, empties };
   }
 
-  const months = [...new Set(keys.map(k => k.slice(0, 7)))];
+  const months = [...new Set(keys.filter(k => !beforeDate || k < beforeDate).map(k => k.slice(0, 7)))];
   for (let i = 0; i < months.length; i++) {
     onProgress?.(i, months.length);
     const m = months[i];
     const snapshot = await withTimeout(get(query(ref(rtdb, 'orders'), orderByKey(), startAt(m), endAt(`${m}\uf8ff`))), 90000, `${m} 주문 조회`);
-    collect(snapshot.val(), orders, empties);
+    collect(snapshot.val(), orders, empties, beforeDate);
   }
   onProgress?.(months.length, months.length);
   return { orders, empties };
