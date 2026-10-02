@@ -17,6 +17,11 @@ interface Actions {
   onCollect?: (g: StoreGroup) => void;
 }
 
+/** 거래처 한 줄에 묶인 주문들의 비고를 중복 없이 '/'로 이어 붙인다 (입금 · 미수금 기록은 제외) */
+function remarkOf(rows: Transaction[]): string {
+  return [...new Set(rows.filter(isOrder).map(t => String(t.remark || '').trim()).filter(Boolean))].join(' / ');
+}
+
 /** 대표 거래처별 합계 표. 행을 누르면 상세 내역, '종속 n곳'을 누르면 종속 거래처별 소계가 펼쳐진다. */
 export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGroup[]; mode: GroupMode } & Actions) {
   const { rules } = useApp();
@@ -43,8 +48,8 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                   </>
                 ) : (
                   <>
-                    <th className="p-2 text-right font-semibold sm:p-3">대납 합계</th>
                     <th className="p-2 text-right font-semibold sm:p-3">물건 갯수</th>
+                    <th className="p-2 font-semibold sm:p-3">비고</th>
                   </>
                 )}
               </tr>
@@ -98,8 +103,8 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                         </>
                       ) : (
                         <>
-                          <td className="p-2 text-right font-mono text-xs sm:p-3 sm:text-sm text-rose-400">{formatMoney(g.billed)}</td>
                           <td className="p-2 text-right text-xs font-bold text-emerald-400 sm:p-3 sm:text-sm">{g.itemCount}개</td>
+                          <td className="min-w-[110px] whitespace-normal break-words p-2 text-xs font-normal text-gray-300 sm:p-3">{remarkOf(g.rows) || <span className="text-gray-600">-</span>}</td>
                         </>
                       )}
                     </tr>
@@ -126,8 +131,8 @@ export function StoreGroupTable({ groups, mode, ...actions }: { groups: StoreGro
                             </>
                           ) : (
                             <>
-                              <td className="p-2.5 text-right font-mono text-rose-400">{formatMoney(sums.billed)}</td>
                               <td className="p-2.5 text-right font-bold text-emerald-400">{sums.items}개</td>
+                              <td className="min-w-[110px] whitespace-normal break-words p-2.5 text-gray-400">{remarkOf(subRows) || <span className="text-gray-600">-</span>}</td>
                             </>
                           )}
                         </tr>
