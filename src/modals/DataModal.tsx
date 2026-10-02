@@ -9,7 +9,8 @@ import { deleteAllOrders, deleteOrders, fetchAllOrders } from '../data/orders';
 import { deleteNonAdminUsers } from '../data/users';
 import { isAdmin } from '../domain/access';
 import { toDateStr } from '../domain/dates';
-import { exportLedger, readLedgerExcel, type ExcelRow } from '../domain/excel';
+import { formatMoney } from '../domain/format';
+import { exportLedger, readLedgerExcel, toThousandUnit, type ExcelRow } from '../domain/excel';
 import { dedupeTransactions } from '../domain/ledger';
 import { useApp } from '../state/AppContext';
 import { Button, ConfirmDialog, FileButton, Modal } from '../components/ui';
@@ -92,8 +93,11 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
   const onRestoreFile = (file: File) =>
     task('복원 파일 읽기', async () => {
       const payload = JSON.parse(await file.text());
-      const list: Transaction[] = payload.orders || payload.transactions;
-      if (!Array.isArray(list)) throw new Error('사입ON 백업 파일이 아닙니다.');
+      const rawList: Transaction[] = payload.orders || payload.transactions;
+      if (!Array.isArray(rawList)) throw new Error('사입ON 백업 파일이 아닙니다.');
+      // 원 단위(35000)로 기록된 예전 백업이면 천원 단위(35)로 바꿔 복원한다
+      const { rows: list, convertedFromWon } = toThousandUnit(rawList);
+      if (convertedFromWon) notify('백업 금액이 원 단위로 보여 천원 단위로 바꿔 읽었습니다 (35000 → 35,000원).', 'info');
       const backupRules: GroupRule[] | undefined = Array.isArray(payload.rules) ? payload.rules : undefined;
       setConfirm({
         title: 'DB 복원',
@@ -125,6 +129,32 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
           const removedIds = new Set(removed.map(t => t.id));
           replaceOrdersLocal(orders.filter(t => !removedIds.has(t.id)));
           notify(`${targets.length}건을 정리했습니다.`, 'success');
+        },
+      });
+    });
+
+  // 원 단위(35000)로 잘못 들어간 금액을 천원 단위(35)로 바로잡는다. 1,000 이상(= 100만원 이상) 금액만 대상.
+  const fixUnits = () =>
+    task('금액 단위 확인', async () => {
+      const { orders: all } = await loadAll('금액 단위 확인');
+      const targets = all.filter(t => Math.abs(Number(t.expense) || 0) >= 1000 || Math.abs(Number(t.income) || 0) >= 1000);
+      if (targets.length === 0) {
+        notify('원 단위로 들어간 금액이 없습니다.', 'success');
+        return;
+      }
+      const sample = targets.slice(0, 3).map(t => `${t.store} ${formatMoney(Number(t.expense) || Number(t.income) || 0)} → ${formatMoney((Number(t.expense) || Number(t.income) || 0) / 1000)}`).join('\n');
+      setConfirm({
+        title: '금액 단위 바로잡기',
+        message: `금액이 1,000(천원 단위, 100만원) 이상인 기록 ${targets.length}건을 1000으로 나눕니다.\n예) 35000 → 35 (35,000원)\n\n${sample}\n\n실제로 100만원 이상인 주문이 섞여 있으면 먼저 백업을 받고 진행하세요.`,
+        label: `${targets.length}건 바로잡기`,
+        run: async () => {
+          const div = (v: unknown) => Math.round(((Number(v) || 0) / 1000) * 1000) / 1000;
+          await saveOrders(targets.map(t => ({
+            ...t,
+            expense: Math.abs(Number(t.expense) || 0) >= 1000 ? div(t.expense) : t.expense,
+            income: Math.abs(Number(t.income) || 0) >= 1000 ? div(t.income) : t.income,
+          })));
+          notify(`${targets.length}건의 금액을 천원 단위로 바로잡았습니다.`, 'success');
         },
       });
     });
@@ -167,6 +197,12 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
         <Section title="중복 정리" description="엑셀을 여러 번 올리는 등으로 완전히 같은 주문이 여러 개 생긴 경우, 1건만 남기고 정리합니다.">
           <Button tone="warning" disabled={!!busy} onClick={dedupe}><Layers className="h-4 w-4" />중복 데이터 찾기</Button>
         </Section>
+
+        {admin && (
+          <Section title="금액 단위 바로잡기 (관리자)" description="엑셀 · 백업을 가져오다 금액이 1000배로 들어간 경우(35,000원이 35,000,000원으로 보임) 1,000 이상 금액을 1000으로 나눕니다.">
+            <Button tone="warning" disabled={!!busy} onClick={fixUnits}><Layers className="h-4 w-4" />원 단위 금액 찾기</Button>
+          </Section>
+        )}
 
         {admin && (
           <Section danger title="초기화 (관리자)" description={<><AlertTriangle className="mr-1 inline h-3.5 w-3.5 text-rose-400" />실사용 시작 전에만 쓰세요. 모든 기기의 데이터가 지워집니다.</>}>

@@ -95,11 +95,11 @@ export async function readLedgerExcel(file: File, defaultDate: string): Promise<
  * 앱은 금액을 천원 단위로 저장한다 (35 = 35,000원). 엑셀에 원 단위(35000)로 적혀 있으면 그대로 넣을 때 1000배로 불어나므로,
  * 0이 아닌 금액의 80% 이상이 1,000 이상이면 원 단위 파일로 보고 1000으로 나눈다. (이 앱이 내보낸 엑셀도 원 단위)
  */
-export function toThousandUnit(rows: ExcelRow[]): { rows: ExcelRow[]; convertedFromWon: boolean } {
-  const amounts = rows.flatMap(r => [r.expense, r.income]).filter(v => v !== 0).map(Math.abs);
+export function toThousandUnit<T extends { expense?: number; income?: number }>(rows: T[]): { rows: T[]; convertedFromWon: boolean } {
+  const amounts = rows.flatMap(r => [Number(r.expense) || 0, Number(r.income) || 0]).filter(v => v !== 0).map(Math.abs);
   const won = amounts.length > 0 && amounts.filter(v => v >= 1000).length / amounts.length >= 0.8;
   if (!won) return { rows, convertedFromWon: false };
-  const div = (v: number) => Math.round((v / 1000) * 1000) / 1000;
+  const div = (v: number | undefined) => Math.round(((Number(v) || 0) / 1000) * 1000) / 1000;
   return { rows: rows.map(r => ({ ...r, expense: div(r.expense), income: div(r.income) })), convertedFromWon: true };
 }
 
