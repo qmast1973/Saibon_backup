@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, ListOrdered } from 'lucide-react';
 import type { Nav } from '../App';
 import { exportWorkday } from '../domain/excel';
 import { STAT_FILTERS, totalItemCount } from '../domain/ledger';
-import { buildStoreGroups } from '../domain/storeGroups';
+import { applyStoreOrder, buildStoreGroups, moveInOrder } from '../domain/storeGroups';
 import { useApp } from '../state/AppContext';
 import { StoreGroupTable } from '../components/StoreGroupTable';
 import { Badge, Button, Screen, cx } from '../components/ui';
@@ -26,9 +26,10 @@ const TONES: Record<string, string> = {
 
 /** 갯수 집계: 처리 상태별 건수와 거래처별 물건 갯수 */
 export function StatsScreen({ nav }: { nav: Nav }) {
-  const { user, users, rules, includeFee } = useApp();
+  const { user, users, rules, includeFee, saveStoreOrder, notify } = useApp();
   const f = useDayFilter(nav.date, user!);
   const [filter, setFilter] = useState('all');
+  const [editingOrder, setEditingOrder] = useState(false);
 
   const cards = useMemo(() => {
     return STAT_FILTERS.map(s => ({ key: s.key, label: s.label, unit: s.unit, tone: s.tone, value: f.scoped.filter(s.test).length }));
@@ -51,7 +52,14 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     return f.scoped.filter(test);
   }, [f.scoped, filter]);
 
-  const groups = useMemo(() => buildStoreGroups(list, { mode: 'stats', rules, users, includeFee }), [list, rules, users, includeFee]);
+  const savedOrder = user!.storeOrder;
+  // 본인이 정한 거래처 순서(들르는 순서)대로 보여 준다. 정한 적이 없으면 기본 순서.
+  const groups = useMemo(
+    () => applyStoreOrder(buildStoreGroups(list, { mode: 'stats', rules, users, includeFee }), savedOrder),
+    [list, rules, users, includeFee, savedOrder],
+  );
+  const moveStore = (store: string, dir: -1 | 1) =>
+    saveStoreOrder(moveInOrder(savedOrder, groups.map(g => g.store), store, dir)).catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'));
 
   return (
     <Screen
@@ -59,7 +67,14 @@ export function StatsScreen({ nav }: { nav: Nav }) {
       badge={<Badge className="bg-pink-900/60 text-pink-200">{user!.name}</Badge>}
       subtitle={user!.role === 'local' ? '받은 물건을 거래처별 갯수와 맞춰 보며 분류하세요. 담당 거래처 주문만 보입니다.' : '처리 상태별 건수와 거래처별 물건 갯수를 확인합니다. 카드를 누르면 목록이 걸러집니다.'}
       onClose={() => nav.setView(null)}
-      actions={<Button tone="success" onClick={() => exportWorkday(list, nav.date, user!.name)} disabled={list.length === 0}><Download className="h-4 w-4" />엑셀 저장</Button>}
+      actions={
+        <>
+          <Button tone={editingOrder ? 'primary' : 'secondary'} onClick={() => setEditingOrder(v => !v)}>
+            <ListOrdered className="h-4 w-4" />{editingOrder ? '순서 편집 끝' : '순서 편집'}
+          </Button>
+          <Button tone="success" onClick={() => exportWorkday(list, nav.date, user!.name)} disabled={list.length === 0}><Download className="h-4 w-4" />엑셀 저장</Button>
+        </>
+      }
     >
       <DayFilterBar date={nav.date} onDate={nav.setDate} f={f} />
 
@@ -86,7 +101,16 @@ export function StatsScreen({ nav }: { nav: Nav }) {
         </div>
       </div>
 
-      <StoreGroupTable groups={groups} mode="stats" onOpenOrder={t => nav.open({ type: 'order', tx: t })} />
+      {editingOrder && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-700 bg-indigo-950/60 p-3 text-xs text-indigo-100">
+          <span>▲▼ 버튼으로 거래처를 <b>들르는 순서대로</b> 옮기세요. 옮기는 즉시 저장되고, 다른 기기에서도 같은 순서로 보입니다.</span>
+          {savedOrder && savedOrder.length > 0 && (
+            <Button size="sm" onClick={() => saveStoreOrder([]).catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'))}>기본 순서로 되돌리기</Button>
+          )}
+        </div>
+      )}
+
+      <StoreGroupTable groups={groups} mode="stats" onOpenOrder={t => nav.open({ type: 'order', tx: t })} reorder={{ editing: editingOrder, onMove: moveStore }} />
     </Screen>
   );
 }

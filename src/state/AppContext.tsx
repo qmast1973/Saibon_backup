@@ -4,7 +4,7 @@ import * as cache from '../data/localCache';
 import { deleteOrder as deleteOrderRemote, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
 import { saveGroupRules, subscribeGroupRules } from '../data/groupRules';
 import { fetchMarkets } from '../data/settings';
-import { isPermissionDenied, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
+import { isPermissionDenied, saveStoreOrder as saveStoreOrderRemote, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, IS_DEMO } from '../data/firebase';
 import { filterVisible, isRelevantForBuyer } from '../domain/access';
@@ -48,6 +48,7 @@ interface AppState {
   replaceOrdersLocal: (list: Transaction[]) => void;
   saveRules: (rules: GroupRule[]) => Promise<void>;
   saveUser: (user: User) => Promise<User>;
+  saveStoreOrder: (order: string[]) => Promise<void>;
   removeUserLocal: (username: string) => void;
 }
 
@@ -261,6 +262,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return saved;
   }, [notify]);
 
+  // 갯수 집계에서 정한 거래처 순서 (로그인한 본인 것만, 다른 기기에서도 같은 순서로 보인다)
+  const saveStoreOrder = useCallback(async (order: string[]) => {
+    const me = userRef.current;
+    if (!me) return;
+    const next: User = { ...me, storeOrder: order.length ? order : undefined };
+    setUser(next);
+    setUsers(prev => prev.map(x => (userKey(x.username) === userKey(me.username) ? { ...x, storeOrder: next.storeOrder } : x)));
+    cache.refreshSessionUser(next);
+    await saveStoreOrderRemote(me.username, order);
+  }, []);
+
   const removeUserLocal = useCallback((username: string) => {
     setUsers(prev => prev.filter(u => userKey(u.username) !== userKey(username)));
   }, []);
@@ -270,7 +282,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     ready, usersAccess, online, user, users, orders, visibleOrders, rules, markets, includeFee, toasts,
     login, logout, setIncludeFee, setMarkets, notify, dismissToast,
-    saveOrders, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, removeUserLocal,
+    saveOrders, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

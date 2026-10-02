@@ -18,6 +18,7 @@ export interface User {
   assignedRegion?: string; // 지방삼촌
   assignedMerchants?: string[]; // 지방삼촌: 담당 상인 username
   allowedMarkets?: string[]; // 사입삼촌: 담당 건물
+  storeOrder?: string[]; // 갯수 집계에서 본인이 정한 거래처 순서 (들르는 순서)
   createdAt?: string;
   createdBy?: string;
   updatedAt?: string;
