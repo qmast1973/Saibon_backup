@@ -35,11 +35,13 @@ export async function saveUser(user: User): Promise<User> {
   return payload;
 }
 
-/** 갯수 집계의 거래처 순서만 저장한다 (다른 회원 정보는 건드리지 않음). 빈 배열이면 기본 순서로 되돌린다. */
-export async function saveStoreOrder(username: string, order: string[]): Promise<void> {
+export type OrderField = 'storeOrder' | 'collectionOrder';
+
+/** 갯수 집계 · 수금관리의 거래처 순서만 저장한다 (다른 회원 정보는 건드리지 않음). 빈 배열이면 기본 순서로 되돌린다. */
+export async function saveStoreOrder(username: string, order: string[], field: OrderField = 'storeOrder'): Promise<void> {
   const key = userKey(username);
   if (!key) throw new Error('아이디가 없습니다.');
-  if (!IS_DEMO) await write(set(ref(rtdb, `users/${key}/storeOrder`), order.length ? order : null), '거래처 순서 저장');
+  if (!IS_DEMO) await write(set(ref(rtdb, `users/${key}/${field}`), order.length ? order : null), '거래처 순서 저장');
 }
 
 export async function deleteUser(username: string): Promise<void> {

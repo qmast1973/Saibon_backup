@@ -32,7 +32,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
   const [detail, setDetail] = useState<{ store: string; sub: string | null } | null>(null);
   const detailGroup = detail ? groups.find(g => g.store === detail.store) : undefined;
   const isCollection = mode === 'collection';
-  const moving = !isCollection && !!reorder?.editing;
+  const moving = !!reorder?.editing;
   const drag = useRowDrag({ enabled: moving, keys: groups.map(g => g.store), onDrop: (store, to) => reorder?.onDrop(store, to) });
 
   return (
@@ -48,7 +48,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                 {isCollection ? (
                   <>
                     <th className="p-2 text-right font-semibold sm:p-3">청구<span className="hidden sm:inline">(사입비 포함)</span></th>
-                    <th className="p-2 text-right font-semibold sm:p-3">입금</th>
+                    <th className={cx('p-2 text-right font-semibold sm:p-3', moving && 'hidden sm:table-cell')}>입금</th>
                     <th className="p-2 text-right font-semibold sm:p-3">미수금</th>
                   </>
                 ) : (
@@ -110,7 +110,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                             {g.fee > 0 && <span className="block font-sans text-[10px] text-indigo-300">+사입비 {formatMoney(g.fee)}</span>}
                             {g.isMonthly && <span className="mt-0.5 inline-block rounded border border-emerald-700 px-1 font-sans text-[10px] text-emerald-400">월사입{g.monthlyAmount ? ` ${g.monthlyAmount.toLocaleString()}원` : ''} 제외</span>}
                           </td>
-                          <td className="p-2 text-right font-mono text-xs text-emerald-400 sm:p-3 sm:text-sm">{formatMoney(g.paid)}</td>
+                          <td className={cx('p-2 text-right font-mono text-xs text-emerald-400 sm:p-3 sm:text-sm', moving && 'hidden sm:table-cell')}>{formatMoney(g.paid)}</td>
                           <td className={cx('p-2 text-right font-mono text-xs font-bold sm:p-3 sm:text-sm', g.balance > 0 ? 'text-amber-400' : g.balance < 0 ? 'text-sky-300' : 'text-gray-500')}>
                             {formatMoney(g.balance)}
                             {g.carry !== 0 && <span className="block font-sans text-[10px] font-normal text-sky-300">이월 {formatMoney(g.carry)} 포함</span>}
@@ -154,7 +154,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                           {isCollection ? (
                             <>
                               <td className="p-2.5 text-right font-mono text-rose-400">{formatMoney(sums.billed)}</td>
-                              <td className="p-2.5 text-right font-mono text-emerald-400">{formatMoney(sums.paid)}</td>
+                              <td className={cx('p-2.5 text-right font-mono text-emerald-400', moving && 'hidden sm:table-cell')}>{formatMoney(sums.paid)}</td>
                               <td className="p-2.5 text-right text-gray-500">-</td>
                             </>
                           ) : (
