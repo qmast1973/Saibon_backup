@@ -56,7 +56,8 @@ export function buildStoreGroups(
       map.set(key, g);
     }
     g.rows.push(t);
-    g.itemCount += Number(t.itemCount) || 0;
+    // 물건 갯수는 처리된 주문만 센다 (카드의 갯수 합계와 같은 기준이어야 표와 카드가 맞는다)
+    if (isOrder(t) && hasStatus(t)) g.itemCount += Number(t.itemCount) || 0;
 
     const { billed, paid } = opts.mode === 'collection' ? splitAmounts(t) : { billed: Number(t.expense) || 0, paid: Number(t.income) || 0 };
     g.billed += billed;
