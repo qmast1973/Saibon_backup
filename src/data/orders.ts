@@ -267,6 +267,47 @@ export async function fetchAllOrders(
   return { orders, empties };
 }
 
+export interface StorageUsage {
+  totalBytes: number;
+  ordersBytes: number;
+  orderCount: number;
+  dayCount: number;
+  firstDate: string;
+  lastDate: string;
+}
+
+const byteLength = (v: unknown) => new Blob([JSON.stringify(v ?? null)]).size;
+
+/** DB에 저장된 데이터 크기를 대략 계산한다 (관리자용). 주문은 달마다 나눠 받아 센다. */
+export async function measureStorage(onProgress?: (done: number, total: number) => void): Promise<StorageUsage> {
+  if (IS_DEMO) throw new Error('미리보기에서는 서버 용량을 확인할 수 없습니다.');
+  const keys = (await fetchDateKeys()) ?? [];
+  const months = [...new Set(keys.map(k => k.slice(0, 7)))];
+  let ordersBytes = 0;
+  let orderCount = 0;
+  for (let i = 0; i < months.length; i++) {
+    onProgress?.(i, months.length);
+    const m = months[i];
+    const snapshot = await withTimeout(get(query(ref(rtdb, 'orders'), orderByKey(), startAt(m), endAt(`${m}\uf8ff`))), 90000, `${m} 용량 조회`);
+    const data = (snapshot.val() || {}) as Record<string, Record<string, unknown>>;
+    ordersBytes += byteLength(data);
+    for (const day of Object.values(data)) orderCount += Object.keys(day || {}).length;
+  }
+  onProgress?.(months.length, months.length);
+  // 주문 밖의 데이터(회원 · 규칙 등)
+  let otherBytes = 0;
+  const token = await auth.currentUser?.getIdToken().catch(() => '');
+  const res = await withTimeout(fetch(`${rtdb.app.options.databaseURL}/.json?shallow=true${token ? `&auth=${token}` : ''}`), 30000, '데이터 목록 조회');
+  if (res.ok) {
+    const top = Object.keys((await res.json()) || {}).filter(k => k !== 'orders');
+    for (const k of top) {
+      const snap = await withTimeout(get(ref(rtdb, k)), 60000, `${k} 용량 조회`);
+      otherBytes += byteLength(snap.val()) + k.length;
+    }
+  }
+  return { totalBytes: ordersBytes + otherBytes, ordersBytes, orderCount, dayCount: keys.length, firstDate: keys[0] ?? '', lastDate: keys[keys.length - 1] ?? '' };
+}
+
 /** 빈 레코드까지 포함해 지정한 주문들을 한 번에 삭제 */
 export async function deleteOrders(list: Pick<Transaction, 'firebaseOrderId' | 'firebaseDate' | 'date'>[]): Promise<void> {
   const updates: Record<string, null> = {};

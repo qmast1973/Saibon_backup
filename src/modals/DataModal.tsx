@@ -5,7 +5,7 @@ import type { Nav } from '../App';
 import { deleteAllPosts } from '../data/board';
 import { deleteAllGroupRules } from '../data/groupRules';
 import { clearAllCaches } from '../data/localCache';
-import { deleteAllOrders, deleteOrders, fetchAllOrders } from '../data/orders';
+import { deleteAllOrders, deleteOrders, fetchAllOrders, measureStorage, type StorageUsage } from '../data/orders';
 import { deleteNonAdminUsers } from '../data/users';
 import { isAdmin } from '../domain/access';
 import { toDateStr } from '../domain/dates';
@@ -38,11 +38,28 @@ function download(filename: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
+const LIMIT_BYTES = 1024 ** 3;
+const fmtSize = (b: number) => (b >= 1024 ** 2 ? `${(b / 1024 ** 2).toFixed(1)}MB` : `${Math.max(1, Math.round(b / 1024))}KB`);
+
+function StorageMeter({ usage }: { usage: StorageUsage }) {
+  const pct = (usage.totalBytes / LIMIT_BYTES) * 100;
+  const tone = pct >= 80 ? 'bg-rose-500' : pct >= 50 ? 'bg-amber-400' : 'bg-emerald-500';
+  return (
+    <div className="w-full space-y-1.5 rounded-xl bg-gray-950 p-3 text-xs">
+      <p className="font-black text-gray-100">{fmtSize(usage.totalBytes)} / 1GB ({pct < 0.1 ? '0.1% 미만' : `${pct.toFixed(1)}%`})</p>
+      <div className="h-2.5 overflow-hidden rounded-full bg-gray-800"><div className={`h-full ${tone}`} style={{ width: `${Math.min(100, Math.max(1, pct))}%` }} /></div>
+      <p className="text-gray-400">주문 {usage.orderCount.toLocaleString()}건 · {usage.dayCount}일치{usage.firstDate && ` (${usage.firstDate} ~ ${usage.lastDate})`} · 주문 {fmtSize(usage.ordersBytes)}</p>
+      <p className="text-gray-500">{pct >= 80 ? '한도에 가까워졌습니다. 유료 플랜(Blaze) 전환을 준비하세요.' : pct >= 50 ? '절반을 넘었습니다. 가끔 다시 확인하세요.' : '여유가 충분합니다.'} 다운로드(월 10GB)는 Firebase 콘솔 사용량 화면에서 봅니다.</p>
+    </div>
+  );
+}
+
 export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
   const { user, users, orders, rules, saveOrders, saveRules, replaceOrdersLocal, notify } = useApp();
   const admin = isAdmin(user);
   const [busy, setBusy] = useState('');
   const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => Promise<void> } | null>(null);
+  const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [excelRows, setExcelRows] = useState<ExcelRow[] | null>(null);
   // 미리보기(데모)는 서버에 접속하지 않으므로 화면에 있는 주문으로 대신한다
   const loadAll = (label = '') =>
@@ -65,6 +82,11 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
       if (convertedFromWon) notify('엑셀 금액이 원 단위로 보여 천원 단위로 바꿔 읽었습니다 (35000 → 35,000원). 다음 화면에서 금액이 맞는지 확인하세요.', 'info');
       if (rows.length === 0) throw new Error('가져올 데이터 행이 없습니다. 열 제목(날짜, 상호, 건물, 층, 호수, 대납 등)을 확인해주세요.');
       setExcelRows(rows);
+    });
+
+  const checkStorage = () =>
+    task('저장 공간 확인', async () => {
+      setUsage(await measureStorage((done, total) => setBusy(`저장 공간 확인 (${done}/${total}개월)`)));
     });
 
   const exportExcel = () =>
@@ -217,6 +239,13 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
         <Section title="중복 정리" description="엑셀을 여러 번 올리는 등으로 완전히 같은 주문이 여러 개 생긴 경우, 1건만 남기고 정리합니다.">
           <Button tone="warning" disabled={!!busy} onClick={dedupe}><Layers className="h-4 w-4" />중복 데이터 찾기</Button>
         </Section>
+
+        {admin && (
+          <Section title="저장 공간 (관리자)" description="서버에 저장된 데이터 크기를 대략 계산합니다. 무료 플랜 한도는 1GB이며, 넘기 전에 유료 플랜(Blaze)으로 바꾸세요.">
+            <Button disabled={!!busy} onClick={checkStorage}><Database className="h-4 w-4" />저장 공간 확인</Button>
+            {usage && <StorageMeter usage={usage} />}
+          </Section>
+        )}
 
         {admin && (
           <Section title="상태 기준 갯수 채우기 (관리자)" description="상태는 있는데 물건 갯수가 비어 있는 옛 기록에 주문처리 버튼과 같은 규칙으로 갯수를 넣습니다. 실제 갯수가 아닌 추정치입니다.">
