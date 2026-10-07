@@ -42,13 +42,13 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
           <table className="w-full sm:min-w-[620px] whitespace-nowrap text-left text-sm text-gray-300">
             <thead className="border-b border-gray-800 bg-gray-800/50 text-xs text-gray-400">
               <tr>
-                {isCollection && <th className="hidden p-3 font-semibold sm:table-cell">지역</th>}
+                {isCollection && <th className="hidden p-3 font-semibold lg:table-cell">지역</th>}
                 <th className="p-3 font-semibold">상호</th>
-                <th className="hidden p-3 text-center font-semibold sm:table-cell">주문</th>
+                <th className={cx('hidden p-3 text-center font-semibold', isCollection ? 'lg:table-cell' : 'sm:table-cell')}>주문</th>
                 {isCollection ? (
                   <>
-                    <th className="hidden p-3 text-right font-semibold sm:table-cell">청구(사입비 포함)</th>
-                    <th className="hidden p-3 text-right font-semibold sm:table-cell">입금</th>
+                    <th className="hidden p-3 text-right font-semibold lg:table-cell">청구(사입비 포함)</th>
+                    <th className="hidden p-3 text-right font-semibold lg:table-cell">입금</th>
                     <th className="p-2 text-right font-semibold sm:p-3">미수금</th>
                   </>
                 ) : (
@@ -80,7 +80,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                       )}
                       onClick={() => setDetail({ store: g.store, sub: null })}
                     >
-                      {isCollection && <td className="hidden p-3 font-semibold sm:table-cell">{g.region}</td>}
+                      {isCollection && <td className="hidden p-3 font-semibold lg:table-cell">{g.region}</td>}
                       <td className="whitespace-normal p-2 font-bold text-gray-100 sm:p-3">
                         <span className="flex flex-wrap items-center gap-1.5">
                           {g.store}
@@ -98,27 +98,27 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                           )}
                         </span>
                         {isCollection && (
-                          <span className="mt-1 block text-[11px] font-normal leading-snug sm:hidden">
+                          <span className="mt-1 block text-[11px] font-normal leading-snug lg:hidden">
                             <span className="text-rose-300">청구 {formatMoney(g.billed)}</span>
                             {g.fee > 0 && <span className="text-indigo-300"> (+사입비 {formatMoney(g.fee)})</span>}
                             <span className="text-emerald-300"> · 입금 {formatMoney(g.paid)}</span>
                             {g.isMonthly && <span className="ml-1 rounded border border-emerald-700 px-1 text-emerald-400">월사입</span>}
                           </span>
                         )}
-                        <span className={cx('mt-0.5 block text-[10px] font-normal text-gray-500', isCollection && 'sm:hidden')}>{[isCollection ? g.region : g.rows[0]?.market || '', `${g.orderCount}건`].filter(Boolean).join(' · ')}</span>
+                        <span className={cx('mt-0.5 block text-[10px] font-normal text-gray-500', isCollection && 'lg:hidden')}>{[isCollection ? g.region : g.rows[0]?.market || '', `${g.orderCount}건`].filter(Boolean).join(' · ')}</span>
                       </td>
-                      <td className="hidden p-3 text-center sm:table-cell">
+                      <td className={cx('hidden p-3 text-center', isCollection ? 'lg:table-cell' : 'sm:table-cell')}>
                         <b className="text-gray-100">{g.orderCount}건</b>
                         <span className="block whitespace-nowrap text-[10px]"><span className="text-emerald-400">완료 {g.completedCount}</span> / <span className="text-amber-400">미처리 {g.unprocessedCount}</span></span>
                       </td>
                       {isCollection ? (
                         <>
-                          <td className="hidden p-3 text-right font-mono text-sm sm:table-cell">
+                          <td className="hidden p-3 text-right font-mono text-sm lg:table-cell">
                             <span className="text-rose-400">{formatMoney(g.billed)}</span>
                             {g.fee > 0 && <span className="block font-sans text-[10px] text-indigo-300">+사입비 {formatMoney(g.fee)}</span>}
                             {g.isMonthly && <span className="mt-0.5 inline-block rounded border border-emerald-700 px-1 font-sans text-[10px] text-emerald-400">월사입{g.monthlyAmount ? ` ${g.monthlyAmount.toLocaleString()}원` : ''} 제외</span>}
                           </td>
-                          <td className="hidden p-3 text-right font-mono text-sm text-emerald-400 sm:table-cell">{formatMoney(g.paid)}</td>
+                          <td className="hidden p-3 text-right font-mono text-sm text-emerald-400 lg:table-cell">{formatMoney(g.paid)}</td>
                           <td className={cx('p-2 text-right font-mono text-xs font-bold sm:p-3 sm:text-sm', g.balance > 0 ? 'text-amber-400' : g.balance < 0 ? 'text-sky-300' : 'text-gray-500')}>
                             {formatMoney(g.balance)}
                             {g.carry !== 0 && <span className="block font-sans text-[10px] font-normal text-sky-300">이월 {formatMoney(g.carry)} 포함</span>}
@@ -156,13 +156,13 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                       const orders = subRows.filter(isOrder);
                       return (
                         <tr key={sub} className="cursor-pointer bg-violet-950/20 text-xs hover:bg-violet-900/30" onClick={() => setDetail({ store: g.store, sub })}>
-                          {isCollection && <td className="hidden p-2.5 pl-6 text-gray-500 sm:table-cell">↳</td>}
+                          {isCollection && <td className="hidden p-2.5 pl-6 text-gray-500 lg:table-cell">↳</td>}
                           <td className="p-2.5"><span className="flex items-center gap-1.5 font-semibold text-violet-200"><Store className="h-3 w-3 text-cyan-400" />{sub}</span>{isCollection && <span className="mt-0.5 block text-[11px] font-normal text-gray-400 sm:hidden">청구 {formatMoney(sums.billed)} · 입금 {formatMoney(sums.paid)}</span>}</td>
-                          <td className="hidden p-2.5 text-center sm:table-cell">{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
+                          <td className={cx('hidden p-2.5 text-center', isCollection ? 'lg:table-cell' : 'sm:table-cell')}>{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
                           {isCollection ? (
                             <>
-                              <td className="hidden p-2.5 text-right font-mono text-rose-400 sm:table-cell">{formatMoney(sums.billed)}</td>
-                              <td className="hidden p-2.5 text-right font-mono text-emerald-400 sm:table-cell">{formatMoney(sums.paid)}</td>
+                              <td className="hidden p-2.5 text-right font-mono text-rose-400 lg:table-cell">{formatMoney(sums.billed)}</td>
+                              <td className="hidden p-2.5 text-right font-mono text-emerald-400 lg:table-cell">{formatMoney(sums.paid)}</td>
                               <td className="p-2.5 text-right text-gray-500">-</td>
                             </>
                           ) : (
