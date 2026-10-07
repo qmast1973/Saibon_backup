@@ -4,6 +4,7 @@ import App from './App';
 import { AppProvider } from './state/AppContext';
 import './index.css';
 import { IS_DEMO, seedDemo } from './demo';
+import { initFontScale } from './components/FontSizePicker';
 
 /** 예기치 못한 오류가 나도 흰 화면 대신 새로고침 안내를 보여 준다 */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
@@ -28,6 +29,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: boolean 
     );
   }
 }
+
+initFontScale();
 
 const start = () => createRoot(document.getElementById('root')!).render(
   <StrictMode>
