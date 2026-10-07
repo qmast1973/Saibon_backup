@@ -47,8 +47,8 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                 <th className="hidden p-3 text-center font-semibold sm:table-cell">주문</th>
                 {isCollection ? (
                   <>
-                    <th className="p-2 text-right font-semibold sm:p-3">청구<span className="hidden sm:inline">(사입비 포함)</span></th>
-                    <th className={cx('p-2 text-right font-semibold sm:p-3', moving && 'hidden sm:table-cell')}>입금</th>
+                    <th className="hidden p-3 text-right font-semibold sm:table-cell">청구(사입비 포함)</th>
+                    <th className="hidden p-3 text-right font-semibold sm:table-cell">입금</th>
                     <th className="p-2 text-right font-semibold sm:p-3">미수금</th>
                   </>
                 ) : (
@@ -97,6 +97,14 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                             </button>
                           )}
                         </span>
+                        {isCollection && (
+                          <span className="mt-1 block text-[11px] font-normal leading-snug sm:hidden">
+                            <span className="text-rose-300">청구 {formatMoney(g.billed)}</span>
+                            {g.fee > 0 && <span className="text-indigo-300"> (+사입비 {formatMoney(g.fee)})</span>}
+                            <span className="text-emerald-300"> · 입금 {formatMoney(g.paid)}</span>
+                            {g.isMonthly && <span className="ml-1 rounded border border-emerald-700 px-1 text-emerald-400">월사입</span>}
+                          </span>
+                        )}
                         <span className={cx('mt-0.5 block text-[10px] font-normal text-gray-500', isCollection && 'sm:hidden')}>{[isCollection ? g.region : g.rows[0]?.market || '', `${g.orderCount}건`].filter(Boolean).join(' · ')}</span>
                       </td>
                       <td className="hidden p-3 text-center sm:table-cell">
@@ -105,12 +113,12 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                       </td>
                       {isCollection ? (
                         <>
-                          <td className="p-2 text-right font-mono text-xs sm:p-3 sm:text-sm">
+                          <td className="hidden p-3 text-right font-mono text-sm sm:table-cell">
                             <span className="text-rose-400">{formatMoney(g.billed)}</span>
                             {g.fee > 0 && <span className="block font-sans text-[10px] text-indigo-300">+사입비 {formatMoney(g.fee)}</span>}
                             {g.isMonthly && <span className="mt-0.5 inline-block rounded border border-emerald-700 px-1 font-sans text-[10px] text-emerald-400">월사입{g.monthlyAmount ? ` ${g.monthlyAmount.toLocaleString()}원` : ''} 제외</span>}
                           </td>
-                          <td className={cx('p-2 text-right font-mono text-xs text-emerald-400 sm:p-3 sm:text-sm', moving && 'hidden sm:table-cell')}>{formatMoney(g.paid)}</td>
+                          <td className="hidden p-3 text-right font-mono text-sm text-emerald-400 sm:table-cell">{formatMoney(g.paid)}</td>
                           <td className={cx('p-2 text-right font-mono text-xs font-bold sm:p-3 sm:text-sm', g.balance > 0 ? 'text-amber-400' : g.balance < 0 ? 'text-sky-300' : 'text-gray-500')}>
                             {formatMoney(g.balance)}
                             {g.carry !== 0 && <span className="block font-sans text-[10px] font-normal text-sky-300">이월 {formatMoney(g.carry)} 포함</span>}
@@ -120,7 +128,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                       ) : (
                         <>
                           <td className="p-2 text-right text-xs font-bold text-emerald-400 sm:p-3 sm:text-sm">{g.itemCount}개</td>
-                          <td className={cx('min-w-[110px] whitespace-normal break-words p-2 text-xs font-normal text-gray-300 sm:p-3', moving && 'hidden sm:table-cell')}>{remarkOf(g.rows) || <span className="text-gray-600">-</span>}</td>
+                          <td className={cx('min-w-[64px] sm:min-w-[110px] whitespace-normal break-words p-2 text-xs font-normal text-gray-300 sm:p-3', moving && 'hidden sm:table-cell')}>{remarkOf(g.rows) || <span className="text-gray-600">-</span>}</td>
                         </>
                       )}
                       {moving && (
@@ -149,18 +157,18 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                       return (
                         <tr key={sub} className="cursor-pointer bg-violet-950/20 text-xs hover:bg-violet-900/30" onClick={() => setDetail({ store: g.store, sub })}>
                           {isCollection && <td className="hidden p-2.5 pl-6 text-gray-500 sm:table-cell">↳</td>}
-                          <td className="p-2.5"><span className="flex items-center gap-1.5 font-semibold text-violet-200"><Store className="h-3 w-3 text-cyan-400" />{sub}</span></td>
+                          <td className="p-2.5"><span className="flex items-center gap-1.5 font-semibold text-violet-200"><Store className="h-3 w-3 text-cyan-400" />{sub}</span>{isCollection && <span className="mt-0.5 block text-[11px] font-normal text-gray-400 sm:hidden">청구 {formatMoney(sums.billed)} · 입금 {formatMoney(sums.paid)}</span>}</td>
                           <td className="hidden p-2.5 text-center sm:table-cell">{orders.length}건 <span className="text-[10px] text-gray-500">(완료 {orders.filter(isCollection ? isFeeCharged : hasStatus).length})</span></td>
                           {isCollection ? (
                             <>
-                              <td className="p-2.5 text-right font-mono text-rose-400">{formatMoney(sums.billed)}</td>
-                              <td className={cx('p-2.5 text-right font-mono text-emerald-400', moving && 'hidden sm:table-cell')}>{formatMoney(sums.paid)}</td>
+                              <td className="hidden p-2.5 text-right font-mono text-rose-400 sm:table-cell">{formatMoney(sums.billed)}</td>
+                              <td className="hidden p-2.5 text-right font-mono text-emerald-400 sm:table-cell">{formatMoney(sums.paid)}</td>
                               <td className="p-2.5 text-right text-gray-500">-</td>
                             </>
                           ) : (
                             <>
                               <td className="p-2.5 text-right font-bold text-emerald-400">{sums.items}개</td>
-                              <td className={cx('min-w-[110px] whitespace-normal break-words p-2.5 text-gray-400', moving && 'hidden sm:table-cell')}>{remarkOf(subRows) || <span className="text-gray-600">-</span>}</td>
+                              <td className={cx('min-w-[64px] sm:min-w-[110px] whitespace-normal break-words p-2.5 text-gray-400', moving && 'hidden sm:table-cell')}>{remarkOf(subRows) || <span className="text-gray-600">-</span>}</td>
                             </>
                           )}
                           {moving && <td />}

@@ -30,7 +30,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: max(16px, 1rem) !important;
   }
 }
 
@@ -66,4 +66,20 @@ html {
   .auth-screen [class*="text-[1"] {
     font-size: 0.8rem !important;
   }
+}
+
+/*
+ * 폰 전체 글자 키우기 (대충 봐도 알아볼 수 있게).
+ * 루트 글자 크기를 키우면 rem 으로 쓴 글씨 · 간격이 모두 같이 커진다.
+ * 9~11px처럼 px 로 고정된 작은 글씨는 아래에서 읽을 수 있는 크기로 따로 올린다.
+ */
+@media (max-width: 639px) {
+  html {
+    font-size: 112.5%;
+  }
+  [class*="text-[9px]"] { font-size: 0.72rem !important; }
+  [class*="text-[10px]"] { font-size: 0.75rem !important; }
+  [class*="text-[11px]"] { font-size: 0.8rem !important; }
+  [class*="text-[12px]"] { font-size: 0.85rem !important; }
+  [class*="text-[13px]"] { font-size: 0.9rem !important; }
 }

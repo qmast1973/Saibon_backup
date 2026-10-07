@@ -57,14 +57,14 @@ export function StatsScreen({ nav }: { nav: Nav }) {
     return f.scoped.filter(test);
   }, [f.scoped, filter]);
 
-  // 첫 줄의 빈칸은 항상, 둘째 줄의 빈칸은 데스크톱에서만 보인다 (모바일 둘째 줄은 5칸씩 두 줄로 나뉨)
+  // 빈칸: 첫 줄은 좁게, 둘째 줄은 폰에서 줄을 바꾸는 역할 (물건 있는 상태 / 물건 없는 상태)
   const card = (key: string, i: number, hideGapOnMobile = false) => {
-    if (key === '_') return <div key={`gap${i}`} aria-hidden className={hideGapOnMobile ? 'hidden sm:block' : ''} />;
+    if (key === '_') return <div key={`gap${i}`} aria-hidden className={hideGapOnMobile ? 'col-span-3 sm:col-span-1' : ''} />;
     const c = cards.find(x => x.key === key);
     if (!c) return null;
     return (
       <button key={c.key} type="button" onClick={() => setFilter(c.key)} className={cx('min-h-[44px] rounded-md border px-0.5 py-1 transition', TONES[c.tone], filter === c.key ? 'ring-2 ring-white/40' : 'opacity-70 hover:opacity-100')}>
-        <span className="block text-[9px] font-semibold leading-tight tracking-tight">{c.label}</span>
+        <span className="block break-keep text-[9px] font-semibold leading-tight tracking-tight">{c.label}</span>
         <span className="text-sm font-black">{c.value}<small className="ml-0.5 text-[9px] font-normal">{c.unit}</small></span>
       </button>
     );
@@ -102,7 +102,7 @@ export function StatsScreen({ nav }: { nav: Nav }) {
           <span>물건 갯수 합계 <b className="text-sm text-cyan-300">{itemTotal}개</b></span>
         </div>
         {zeroBreakdown.total > 0 && (
-          <p className="mb-2 rounded-lg bg-gray-950 px-2 py-1.5 text-[11px] leading-snug text-gray-300">
+          <p className="mb-2 break-keep rounded-lg bg-gray-950 px-2 py-1.5 text-[11px] leading-snug text-gray-300">
             <b className="text-gray-100">갯수 없음 {zeroBreakdown.total}건</b> ={' '}
             {zeroBreakdown.entries.map((e, i) => (
               <span key={e.status || '(상태없음)'} className={e.normal ? '' : 'font-bold text-amber-300'}>
@@ -112,10 +112,10 @@ export function StatsScreen({ nav }: { nav: Nav }) {
           </p>
         )}
         {/* 첫 줄: 건수 / (빈칸) / 갯수 있음 · 없음. 둘째 줄: 물건 있는 상태들 / (빈칸) / 물건 없는 상태들 */}
-        <div className="grid grid-cols-6 gap-1 text-center">
+        <div className="grid grid-cols-[repeat(3,minmax(0,1fr))_0.3fr_repeat(2,minmax(0,1fr))] gap-1 text-center sm:grid-cols-6">
           {ROW_TOP.map((key, i) => card(key, i))}
         </div>
-        <div className="mt-1 grid grid-cols-5 gap-1 text-center sm:grid-cols-10">
+        <div className="mt-1 grid grid-cols-4 gap-1 text-center sm:grid-cols-10">
           {ROW_STATUS.map((key, i) => card(key, i, true))}
         </div>
       </div>

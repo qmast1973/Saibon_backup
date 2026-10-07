@@ -67,7 +67,7 @@ export function DayFilterBar({
   const label = 'mb-1 flex items-center gap-1 text-xs font-bold text-gray-400';
   return (
     <div className="mb-4 grid grid-cols-2 gap-2.5 rounded-xl border border-gray-800 bg-gray-900 p-3 sm:grid-cols-4">
-      <label>
+      <label className="col-span-2 sm:col-span-1">
         <span className={label}><Calendar className="h-3.5 w-3.5 text-sky-400" />날짜</span>
         <Input type="date" value={date} onChange={e => { onDate(e.target.value); f.reset(); }} />
       </label>
@@ -85,7 +85,7 @@ export function DayFilterBar({
           {f.floors.map(x => <option key={x} value={x}>{x}층</option>)}
         </Select>
       </label>
-      <div>
+      <div className="col-span-2 sm:col-span-1">
         <span className={label}>검색</span>
         <StoreSearch value={f.query} onChange={f.setQuery} knownStores={uniqueSorted(f.dayOrders.map(t => t.store))} rules={rules} placeholder="상호/호수/메모 (초성)" />
       </div>
