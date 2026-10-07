@@ -3,6 +3,7 @@ import { BookOpen, Building2, ChevronRight, Database, Layers, Settings, Users } 
 import type { Nav } from '../App';
 import { hasAdminAccess, isAdmin } from '../domain/access';
 import { useApp } from '../state/AppContext';
+import { FontSizePicker } from '../components/FontSizePicker';
 import { Modal, Toggle } from '../components/ui';
 
 function MenuItem({ icon, title, description, onClick }: { icon: ReactNode; title: string; description: string; onClick: () => void }) {
@@ -28,6 +29,7 @@ export function SettingsModal({ nav, onClose }: { nav: Nav; onClose: () => void 
   return (
     <Modal title="설정" icon={<Settings className="h-5 w-5 text-indigo-400" />} onClose={onClose} size="sm">
       <div className="space-y-2.5">
+        <FontSizePicker />
         <MenuItem icon={<BookOpen className="h-5 w-5" />} title="도움말" description="기능 설명 · 키워드 검색" onClick={() => go('help')} />
         {user?.role !== 'merchant' && (
           <Toggle

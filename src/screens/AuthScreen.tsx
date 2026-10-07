@@ -6,6 +6,7 @@ import * as cache from '../data/localCache';
 import { uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { AdminCreateModal } from '../modals/AdminCreateModal';
+import { FontSizePicker } from '../components/FontSizePicker';
 import { Button, Field, Input, LoginIdInput, PasswordInput, Select, cx } from '../components/ui';
 import { Logo } from '../components/Logo';
 
@@ -265,6 +266,9 @@ export function AuthScreen() {
               <Notice message={message} />
             </form>
           )}
+          <div className="mt-5">
+            <FontSizePicker compact />
+          </div>
         </div>
       </div>
       {showAdminCreate && <AdminCreateModal onClose={() => setShowAdminCreate(false)} />}

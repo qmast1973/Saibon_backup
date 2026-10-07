@@ -46,6 +46,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 html {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  /* 사용자가 설정에서 고른 글자 크기 배율 (--fs, 기본 1) */
+  font-size: calc(16px * var(--fs, 1));
 }
 
 /*
@@ -55,7 +57,12 @@ html {
  */
 @media (max-width: 639px), (pointer: coarse) {
   html {
-    font-size: clamp(18px, 2.6vw, 28px);
+    font-size: calc(clamp(18px, 2.6vw, 28px) * var(--fs, 1));
+  }
+  /* 한글이 글자 중간에서 꺾이지 않게 단어(띄어쓰기) 단위로 줄을 바꾼다. 너무 긴 단어만 예외 */
+  body {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
   }
   /* 9~13px 처럼 px 로 고정된 작은 글씨는 읽을 수 있는 크기로 따로 올린다 */
   [class*="text-[9px]"] { font-size: 0.72rem !important; }
@@ -68,7 +75,7 @@ html {
 /* 로그인 · 회원가입 화면은 특히 작게 보이므로 더 키운다 */
 @media (max-width: 639px), (pointer: coarse) {
   html:has(.auth-screen) {
-    font-size: clamp(22px, 3vw, 32px);
+    font-size: calc(clamp(22px, 3vw, 32px) * var(--fs, 1));
   }
   .auth-screen input:not([type="checkbox"]),
   .auth-screen select {

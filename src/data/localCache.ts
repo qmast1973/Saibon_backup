@@ -12,6 +12,7 @@ const KEYS = {
   savedId: 'saipon.savedId',
   autoLogin: 'saipon.autoLogin',
   includeFee: 'saipon.includeFee',
+  fontScale: 'saipon.fontScale',
 };
 
 const SESSION_TTL = 8 * 60 * 60 * 1000; // 자동 로그인 유지 8시간
@@ -93,6 +94,17 @@ export const getIncludeFee = () => {
   }
 };
 export const setIncludeFee = (on: boolean) => writeJsonRaw(KEYS.includeFee, String(on));
+
+/** 글자 크기 배율 (1 = 기본). 이 기기에만 저장한다. */
+export const getFontScale = () => {
+  try {
+    const v = Number(localStorage.getItem(KEYS.fontScale));
+    return v >= 1 && v <= 1.6 ? v : 1;
+  } catch {
+    return 1;
+  }
+};
+export const setFontScale = (v: number) => writeJsonRaw(KEYS.fontScale, String(v));
 
 function writeJsonRaw(key: string, value: string) {
   try {
