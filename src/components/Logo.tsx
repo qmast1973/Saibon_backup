@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { cx } from './ui';
 
-const LOGO_URL =
-  'https://firebasestorage.googleapis.com/v0/b/ildang-505711.firebasestorage.app/o/%EC%82%AC%EC%9E%85ON.png?alt=media&token=9aec0177-3023-4390-b1cb-b7d44a42aa97';
+const LOGO_URL = `${import.meta.env.BASE_URL}logo.png`;
 
 /** 로고 이미지를 못 불러오면 글자 로고로 대신한다 */
 export function Logo({ className }: { className: string }) {

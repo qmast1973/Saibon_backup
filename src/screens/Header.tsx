@@ -16,7 +16,7 @@ export function Header({ nav }: { nav: Nav }) {
   return (
     <header className="relative z-30 bg-indigo-950 text-white shadow-md sm:sticky sm:top-0">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:px-4">
-        <Logo className="h-10 sm:h-16" />
+        <Logo className="h-12 sm:h-16" />
 
         <div className="ml-auto flex items-center gap-1.5">
           <button
