@@ -121,7 +121,7 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="flex min-h-dvh items-start justify-center overflow-y-auto bg-gray-950 p-3 sm:items-center sm:p-4">
+    <div className="auth-screen flex min-h-dvh items-start justify-center overflow-y-auto bg-gray-950 p-3 sm:items-center sm:p-4">
       <div className="my-auto w-full max-w-md overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
         <div className="flex justify-center bg-indigo-950 px-4 py-5">
           <Logo className="h-36 sm:h-48" />
@@ -158,8 +158,8 @@ export function AuthScreen() {
               <Field label="비밀번호">
                 <PasswordInput required value={password} onChange={setPassword} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
               </Field>
-              <div className="flex items-center justify-between text-xs text-gray-300">
-                <div className="flex gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 text-xs text-gray-300">
+                <div className="flex gap-4 whitespace-nowrap">
                   <label className="flex items-center gap-1.5">
                     <input type="checkbox" checked={saveId} onChange={e => setSaveId(e.target.checked)} className="accent-indigo-500" /> 이메일 저장
                   </label>
@@ -167,7 +167,7 @@ export function AuthScreen() {
                     <input type="checkbox" checked={autoLogin} onChange={e => setAutoLoginState(e.target.checked)} className="accent-indigo-500" /> 자동 로그인
                   </label>
                 </div>
-                <button type="button" onClick={() => switchMode('reset')} className="font-bold text-indigo-300 underline">
+                <button type="button" onClick={() => switchMode('reset')} className="min-h-[44px] whitespace-nowrap font-bold text-indigo-300 underline">
                   비밀번호 찾기
                 </button>
               </div>
