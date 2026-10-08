@@ -20,7 +20,7 @@ function MenuItem({ icon, title, description, onClick }: { icon: ReactNode; titl
 }
 
 export function SettingsModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
-  const { user, includeFee, setIncludeFee } = useApp();
+  const { user, includeFee, setIncludeFee, showFeeWaive, setShowFeeWaive } = useApp();
   const go = (type: 'help' | 'data' | 'rules' | 'users' | 'buildings') => {
     onClose();
     nav.open({ type });
@@ -37,6 +37,14 @@ export function SettingsModal({ nav, onClose }: { nav: Nav; onClose: () => void 
             onChange={setIncludeFee}
             label="사입비 포함 계산"
             description={includeFee ? '수금관리 청구액에 완료 건당 사입비(4,000원)를 더합니다.' : '사입비 없이 대납금만 청구합니다.'}
+          />
+        )}
+        {user?.role !== 'merchant' && (
+          <Toggle
+            checked={showFeeWaive}
+            onChange={setShowFeeWaive}
+            label="사입비 제외 체크칸 사용"
+            description={showFeeWaive ? '수금 상세 내역의 주문마다 "사입비 제외" 체크칸이 보입니다.' : '체크칸을 숨깁니다. 이미 제외한 주문은 그대로 유지됩니다.'}
           />
         )}
         {user?.role !== 'merchant' && <MenuItem icon={<Layers className="h-5 w-5" />} title="대표거래처 관리" description="여러 상호를 대표 거래처로 묶기, 월사입 설정" onClick={() => go('rules')} />}

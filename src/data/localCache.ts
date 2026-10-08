@@ -12,6 +12,7 @@ const KEYS = {
   savedId: 'saipon.savedId',
   autoLogin: 'saipon.autoLogin',
   includeFee: 'saipon.includeFee',
+  showFeeWaive: 'saipon.showFeeWaive',
   fontScale: 'saipon.fontScale',
 };
 
@@ -94,6 +95,16 @@ export const getIncludeFee = () => {
   }
 };
 export const setIncludeFee = (on: boolean) => writeJsonRaw(KEYS.includeFee, String(on));
+
+/** 수금 상세 내역의 '사입비 제외' 체크칸 표시 (이 기기에만 저장, 기본 켜짐) */
+export const getShowFeeWaive = () => {
+  try {
+    return localStorage.getItem(KEYS.showFeeWaive) !== 'false';
+  } catch {
+    return true;
+  }
+};
+export const setShowFeeWaive = (on: boolean) => writeJsonRaw(KEYS.showFeeWaive, String(on));
 
 /** 글자 크기 배율 (1 = 기본). 이 기기에만 저장한다. */
 export const getFontScale = () => {
