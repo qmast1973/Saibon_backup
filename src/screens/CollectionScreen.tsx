@@ -19,7 +19,7 @@ type StatusFilter = '' | '미처리' | '완료' | '미수';
 
 /** 수금관리: 날짜별로 거래처(대표 기준) 청구 · 입금 · 미수를 보고 수금을 입력 */
 export function CollectionScreen({ nav }: { nav: Nav }) {
-  const { user, users, rules, visibleOrders, includeFee, markets, saveOrders, deleteOrder, saveStoreOrder, notify } = useApp();
+  const { user, users, rules, visibleOrders, includeFee, showFeeWaive, markets, saveOrders, deleteOrder, saveStoreOrder, notify } = useApp();
   const [storeQuery, setStoreQuery] = useState('');
   const [buyer, setBuyer] = useState('');
   const [status, setStatus] = useState<StatusFilter>('');
@@ -158,7 +158,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
         mode="collection"
         onOpenOrder={t => nav.open({ type: 'order', tx: t })}
         onToggleFee={t => run(saveOrders([toggleFeeCharged(t)]))}
-        onWaiveFee={(t, waived) => run(saveOrders([setFeeWaived(t, waived)]))}
+        onWaiveFee={showFeeWaive ? (t, waived) => run(saveOrders([setFeeWaived(t, waived)])) : undefined}
         onEditDeposit={setEditDeposit}
         onDeleteDeposit={setDeleteDeposit}
         onCollect={g => setEntry({ store: g.store })}

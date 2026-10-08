@@ -36,6 +36,8 @@ interface AppState {
   login: (user: User) => void;
   logout: () => void;
   setIncludeFee: (on: boolean) => void;
+  showFeeWaive: boolean;
+  setShowFeeWaive: (on: boolean) => void;
   setMarkets: (markets: string[]) => void;
   notify: (text: string, tone?: Toast['tone']) => void;
   dismissToast: (id: number) => void;
@@ -89,6 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [rules, setRules] = useState<GroupRule[]>(() => cache.loadCachedRules());
   const [markets, setMarkets] = useState<string[]>([]);
   const [includeFee, setIncludeFeeState] = useState(cache.getIncludeFee);
+  const [showFeeWaive, setShowFeeWaiveState] = useState(cache.getShowFeeWaive);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [usersAccess, setUsersAccess] = useState<AppState['usersAccess']>('unknown');
   // Firebase 로그인 상태가 바뀌면(로그인/로그아웃) 실시간 동기화를 다시 연결한다
@@ -219,6 +222,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const setShowFeeWaive = useCallback((on: boolean) => {
+    cache.setShowFeeWaive(on);
+    setShowFeeWaiveState(on);
+  }, []);
   const setIncludeFee = useCallback((on: boolean) => {
     cache.setIncludeFee(on);
     setIncludeFeeState(on);
@@ -280,8 +287,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const visibleOrders = useMemo(() => (user ? filterVisible(orders, user, users, rules) : []), [orders, user, users, rules]);
 
   const value: AppState = {
-    ready, usersAccess, online, user, users, orders, visibleOrders, rules, markets, includeFee, toasts,
-    login, logout, setIncludeFee, setMarkets, notify, dismissToast,
+    ready, usersAccess, online, user, users, orders, visibleOrders, rules, markets, includeFee, showFeeWaive, toasts,
+    login, logout, setIncludeFee, setShowFeeWaive, setMarkets, notify, dismissToast,
     saveOrders, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
