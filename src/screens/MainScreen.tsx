@@ -6,7 +6,7 @@ import { canSeeItemCounts } from '../domain/access';
 import { getBusinessDate, getKoreanHolidays } from '../domain/dates';
 import { formatLocation, formatMoney } from '../domain/format';
 import { getBillingStore, getMerchantBundle, getSubStores, matchesTransaction, sortByStoreFocus } from '../domain/groups';
-import { hasStatus, isReceivable, splitAmounts } from '../domain/ledger';
+import { hasStatus, isOrder, isReceivable, splitAmounts } from '../domain/ledger';
 import { compact, fuzzyIncludes, uniqueSorted } from '../domain/text';
 import { regionLabel } from '../domain/storeGroups';
 import { useOlderOrders } from '../hooks/useOlderOrders';
@@ -170,8 +170,14 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
   const isMerchant = user?.role === 'merchant';
 
   const dayCounts = useMemo(() => {
+    // 주문처리 화면과 같은 기준으로 '주문'만 센다 (입금 · 미수금 기록은 따로)
     const map: Record<string, number> = {};
-    for (const t of orders) map[t.date] = (map[t.date] || 0) + 1;
+    for (const t of orders) if (isOrder(t)) map[t.date] = (map[t.date] || 0) + 1;
+    return map;
+  }, [orders]);
+  const dayOthers = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const t of orders) if (!isOrder(t)) map[t.date] = (map[t.date] || 0) + 1;
     return map;
   }, [orders]);
 
@@ -202,7 +208,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
   const selectDay = (dateStr: string) => {
     nav.setDate(dateStr);
     // 상인이 빈 날짜를 누르면 바로 주문 입력
-    if (isMerchant && !dayCounts[dateStr]) nav.newOrder();
+    if (isMerchant && !dayCounts[dateStr] && !dayOthers[dateStr]) nav.newOrder();
   };
 
   const goToday = () => {
@@ -261,6 +267,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
             const dateStr = `${year}-${pad(mon + 1)}-${pad(d)}`;
             const holiday = holidays[dateStr];
             const count = dayCounts[dateStr] || 0;
+            const others = dayOthers[dateStr] || 0;
             const dow = (firstDay + i) % 7;
             const selected = dateStr === nav.date;
             return (
@@ -270,7 +277,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
                 onClick={() => selectDay(dateStr)}
                 className={cx(
                   'relative flex min-h-[56px] flex-col items-end justify-end rounded-xl border p-1.5 text-left transition sm:min-h-[72px]',
-                  selected ? 'z-10 border-indigo-400 bg-indigo-950 ring-2 ring-indigo-500' : count > 0 ? 'border-gray-700 bg-gray-800/60 hover:bg-gray-800' : 'border-gray-800 bg-gray-900 hover:bg-gray-800/60',
+                  selected ? 'z-10 border-indigo-400 bg-indigo-950 ring-2 ring-indigo-500' : count > 0 || others > 0 ? 'border-gray-700 bg-gray-800/60 hover:bg-gray-800' : 'border-gray-800 bg-gray-900 hover:bg-gray-800/60',
                 )}
               >
                 <span className={cx('absolute left-1.5 top-1 flex flex-col items-start', dow === 0 || holiday ? 'text-rose-400' : dow === 6 ? 'text-sky-400' : 'text-gray-200')}>
@@ -278,6 +285,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
                   {holiday && <span className="mt-0.5 max-w-[40px] truncate text-[9px] font-bold leading-none opacity-90 sm:max-w-[64px]" title={holiday}>{holiday}</span>}
                 </span>
                 {count > 0 && <span className="mt-4 whitespace-nowrap rounded-md bg-indigo-600 px-1 py-0.5 text-[10px] font-bold text-white sm:px-1.5 sm:text-xs">{count}건</span>}
+                {count === 0 && others > 0 && <span className="mt-4 whitespace-nowrap rounded-md bg-gray-700 px-1 py-0.5 text-[10px] font-bold text-gray-200 sm:px-1.5 sm:text-xs">입금 {others}</span>}
               </button>
             );
           })}
@@ -293,7 +301,7 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
         <div className="grid grid-cols-3 rounded-xl border border-gray-800 bg-gray-950 p-2.5 text-center text-xs">
           <div><p className="text-[11px] text-gray-500">대납 합계</p><p className="font-bold text-rose-400">{formatMoney(totals.billed)}</p></div>
           <div className="border-x border-gray-800"><p className="text-[11px] text-gray-500">입금 합계</p><p className="font-bold text-sky-400">{formatMoney(totals.paid)}</p></div>
-          <div><p className="text-[11px] text-gray-500">건수</p><p className="font-bold">{dayOrders.length}건</p></div>
+          <div><p className="text-[11px] text-gray-500">건수</p><p className="font-bold">주문 {dayOrders.filter(isOrder).length}건</p>{dayOrders.some(t => !isOrder(t)) && <p className="text-[11px] text-gray-400">입금 · 미수금 {dayOrders.filter(t => !isOrder(t)).length}건</p>}</div>
         </div>
 
         {focusStore && (
