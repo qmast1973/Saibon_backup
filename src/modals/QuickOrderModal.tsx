@@ -95,6 +95,7 @@ export function QuickOrderModal({ nav, onClose }: { nav: Nav; onClose: () => voi
 
   return (
     <Modal
+      big
       title="빠른주문"
       subtitle={`붙여넣은 글을 자동으로 나눠 ${nav.date} 주문으로 등록합니다.`}
       icon={<Zap className="h-5 w-5 text-yellow-300" />}

@@ -54,7 +54,7 @@ export function MainScreen({ nav }: { nav: Nav }) {
   }, [user?.role, deferredQuery, rules]);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-3 p-3">
+    <main className="big-text mx-auto flex w-full max-w-7xl flex-1 flex-col gap-3 p-3">
       {isMerchant && bundle.length > 1 && (
         <section className="flex flex-col gap-2.5 rounded-2xl border border-violet-800/60 bg-violet-950/50 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export function MainScreen({ nav }: { nav: Nav }) {
 
       <section className="flex items-center gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2">
         <div className="max-w-md flex-1">
-          <StoreSearch value={query} onChange={setQuery} knownStores={stores} rules={rules} placeholder="상호, 대표거래처, 건물, 비고, 담당자 (초성 가능)" />
+          <StoreSearch value={query} onChange={setQuery} knownStores={stores} rules={rules} placeholder="상호 · 건물 · 비고 검색 (초성 가능)" />
         </div>
       </section>
 
@@ -276,20 +276,20 @@ function CalendarView({ nav, orders }: { nav: Nav; orders: Transaction[] }) {
                 type="button"
                 onClick={() => selectDay(dateStr)}
                 className={cx(
-                  'relative flex min-h-[56px] flex-col items-end justify-end rounded-xl border p-1.5 text-left transition sm:min-h-[72px]',
+                  'cal-day relative flex min-h-[56px] flex-col items-end justify-end rounded-xl border p-1.5 text-left transition sm:min-h-[72px]',
                   selected ? 'z-10 border-indigo-400 bg-indigo-950 ring-2 ring-indigo-500' : count > 0 || others > 0 ? 'border-gray-700 bg-gray-800/60 hover:bg-gray-800' : 'border-gray-800 bg-gray-900 hover:bg-gray-800/60',
                 )}
               >
                 <span className={cx('absolute left-1.5 top-1 flex flex-col items-start', dow === 0 || holiday ? 'text-rose-400' : dow === 6 ? 'text-sky-400' : 'text-gray-200')}>
                   <span className="text-[13px] font-black leading-none sm:text-[15px]">{d}</span>
-                  {holiday && <span className="mt-0.5 max-w-[40px] truncate text-[9px] font-bold leading-none opacity-90 sm:max-w-[64px]" title={holiday}>{holiday}</span>}
+                  {holiday && <span className="cal-holiday mt-0.5 max-w-[40px] truncate text-[9px] font-bold leading-none opacity-90 sm:max-w-[64px]" title={holiday}>{holiday}</span>}
                 </span>
                 {count > 0 && <span className="mt-4 whitespace-nowrap rounded-md bg-indigo-600 px-1 py-0.5 text-[10px] font-bold text-white sm:px-1.5 sm:text-xs">{count}건</span>}
                 {count === 0 && others > 0 && <span className="mt-4 whitespace-nowrap rounded-md bg-gray-700 px-1 py-0.5 text-[10px] font-bold text-gray-200 sm:px-1.5 sm:text-xs">입금 {others}</span>}
               </button>
             );
           })}
-          {Array.from({ length: trailing }, (_, i) => <div key={`n${i}`} className="min-h-[56px] rounded-xl bg-gray-950/40 sm:min-h-[72px]" />)}
+          {Array.from({ length: trailing }, (_, i) => <div key={`n${i}`} className="cal-day min-h-[56px] rounded-xl bg-gray-950/40 sm:min-h-[72px]" />)}
         </div>
       </div>
 

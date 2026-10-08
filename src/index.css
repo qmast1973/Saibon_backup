@@ -103,3 +103,29 @@ html {
 .text-indigo-400 { color: #a5b4fc; }
 .text-rose-400 { color: #fda4af; }
 input::placeholder, textarea::placeholder { color: #9aa3b2; opacity: 1; }
+
+/*
+ * 상인도 쓰는 화면(메인 달력 · 사입 내역 · 신규 주문 · 빠른 주문)은 글자 · 입력칸 · 버튼을 한 단계 더 키운다.
+ * 해당 화면의 바깥 칸에 big-text 클래스를 붙여 쓴다. 터치 화면에서는 위 글자 크기 설정(루트 크기)에 더해진다.
+ */
+.big-text [class*="text-[9px]"] { font-size: 0.85rem !important; }
+.big-text [class*="text-[10px]"] { font-size: 0.9rem !important; }
+.big-text [class*="text-[11px]"] { font-size: 0.95rem !important; }
+.big-text [class*="text-[12px]"] { font-size: 1rem !important; }
+.big-text [class*="text-[13px]"] { font-size: 1.05rem !important; }
+.big-text [class*="text-[15px]"] { font-size: 1.2rem !important; }
+.big-text .text-xs { font-size: 1rem !important; }
+.big-text .text-sm { font-size: 1.1rem !important; }
+.big-text .text-base { font-size: 1.2rem !important; }
+.big-text .text-lg { font-size: 1.35rem !important; }
+.big-text input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+.big-text select,
+.big-text textarea {
+  font-size: 1.15rem !important;
+  min-height: 3.1rem;
+}
+.big-text button { min-height: 2.75rem; }
+.big-text input[type="checkbox"] { width: 1.3rem; height: 1.3rem; }
+/* 달력 칸: 날짜 숫자가 커진 만큼 칸도 키우고, 휴일 이름은 칸에 맞게 작게 둔다 */
+.big-text .cal-day { min-height: 4.6rem; }
+.big-text .cal-holiday { font-size: 0.75rem !important; }

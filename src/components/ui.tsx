@@ -272,6 +272,7 @@ export function Modal({
   footer,
   size = 'md',
   z = 'z-[200]',
+  big = false,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -281,13 +282,15 @@ export function Modal({
   footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   z?: string;
+  /** 상인도 쓰는 화면(주문 입력 · 빠른 주문): 글자 · 입력칸을 더 크게 */
+  big?: boolean;
 }) {
   useBodyScrollLock();
   useEscape(onClose);
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
   return (
     <div className={cx('fixed inset-0 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4', z)} role="dialog" aria-modal="true">
-      <div className={cx('flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl', widths[size])}>
+      <div className={cx('flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl', widths[size], big && 'big-text')}>
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-800 px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <h3 className="flex items-center gap-2 text-base font-black text-gray-100">
