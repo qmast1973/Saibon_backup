@@ -133,7 +133,11 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   }
   user = users.find(u => u.uid === uid) || users.find(u => String(u.email || '').toLowerCase() === email.toLowerCase()) || findUser(users, identifier);
 
+  // 서버에 승인된 관리자가 하나도 없으면(새 DB 등) 처음 로그인한 이 계정이 최초 관리자가 된다
+  const noAdmin = !users.some(u => u.role === 'admin' && u.approved !== false);
+
   if (user) {
+    if (noAdmin) return saveUser({ ...user, role: 'admin', approved: true, passwordHash: hash, updatedAt: new Date().toISOString() });
     // 이메일로 비밀번호를 바꾼 경우 등: 새 비밀번호로 갱신
     return user.passwordHash === hash ? user : saveUser({ ...user, passwordHash: hash });
   }
@@ -146,11 +150,11 @@ export async function signIn(identifier: string, password: string, knownUsers: U
     email,
     username: key,
     name: auth.currentUser?.displayName || key,
-    role: 'merchant',
-    approved: false,
+    role: noAdmin ? 'admin' : 'merchant',
+    approved: noAdmin,
     passwordHash: hash,
     createdAt: new Date().toISOString(),
-    createdBy: 'firebase_login',
+    createdBy: noAdmin ? 'first_admin' : 'firebase_login',
   });
 }
 
