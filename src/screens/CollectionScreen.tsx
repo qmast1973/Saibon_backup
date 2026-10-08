@@ -190,7 +190,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
 function CollectionEntryModal({
   initialStore, date, groups, knownStores, onClose,
 }: { initialStore: string; date: string; groups: StoreGroup[]; knownStores: string[]; onClose: () => void }) {
-  const { user, rules, saveOrders, notify } = useApp();
+  const { user, rules, addOrdersFast, notify } = useApp();
   const [entryDate, setEntryDate] = useState(date);
   const [store, setStore] = useState(initialStore);
   const [deposit, setDeposit] = useState('');
@@ -236,14 +236,14 @@ function CollectionEntryModal({
     if (depositAmount > 0) list.push(make(depositAmount, `수금 (온라인입금${memo ? ` - ${memo}` : ''})`));
     if (cashAmount > 0) list.push(make(cashAmount, memo ? `수금 (${memo})` : '수금'));
 
+    // 화면에 먼저 반영하고 서버 저장은 뒤에서 한다 (실패하면 빼고 알려 준다)
     setSaving(true);
     try {
-      await saveOrders(list);
+      addOrdersFast(list);
       notify(`${store} 수금 ${formatMoney(depositAmount + cashAmount)}을 저장했습니다.`, 'success');
       onClose();
     } catch (err) {
       notify(err instanceof Error ? err.message : '저장하지 못했습니다.', 'error');
-    } finally {
       setSaving(false);
     }
   };
