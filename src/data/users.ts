@@ -209,7 +209,19 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
     uid = cred.user.uid;
     await updateProfile(cred.user, { displayName: input.name }).catch(() => undefined);
   } catch (e) {
-    throw new Error(authMessage(e, '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'));
+    // 로그인 계정(이메일)은 있는데 회원 정보만 없는 경우(DB를 새로 만들었을 때 등): 같은 비밀번호로 로그인되면 회원 정보만 다시 만든다
+    if ((e as { code?: string })?.code !== 'auth/email-already-in-use') throw new Error(authMessage(e, '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'));
+    let again: string;
+    try {
+      again = (await signInWithEmailAndPassword(auth, email, input.password)).user.uid;
+    } catch {
+      throw new Error('이미 가입된 이메일 주소입니다. 로그인하거나 "비밀번호 찾기"로 비밀번호를 다시 정하세요.');
+    }
+    const now = await fetchUsers().catch(() => existing);
+    if (now.some(u => u.uid === again || String(u.email || '').toLowerCase() === email)) {
+      throw new Error('이미 가입된 이메일 주소입니다. 로그인해 주세요.');
+    }
+    uid = again;
   }
 
   // 로그인된 상태에서 최신 회원 목록을 다시 읽어, 같은 키(이메일 앞부분)나 닉네임이 있으면 덮어쓰지 않고 뒤에 번호를 붙인다
