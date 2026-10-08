@@ -199,3 +199,18 @@ describe('수금 목록의 지역 칸', () => {
     expect(groups.map(g => [g.store, g.region])).toEqual([['상호A', '창원'], ['상호B', ''], ['상호C', '']]); // 지역 있는 줄이 먼저
   });
 });
+
+describe('사입비 제외(서비스)', () => {
+  it('제외한 주문은 사입비만 빠지고 대납금은 그대로 청구되며 이월에도 반영된다', () => {
+    const rows = [
+      order('2026-10-01', '상호A', 30, { status: '주문찾기' }),
+      order('2026-10-01', '상호A', 10, { status: '반품만', isFeeExcluded: true }),
+    ];
+    const [g] = buildStoreGroups(rows, { ...opts, mode: 'collection' });
+    expect(g.fee).toBe(4); // 완료 1건만 사입비
+    expect(g.balance).toBe(44); // 30 + 10 + 4
+    expect(g.completedCount).toBe(1);
+    expect(g.unprocessedCount).toBe(0);
+    expect(computeCarryOver(rows, '2026-10-02', opts).get('상호A')?.amount).toBe(44);
+  });
+});

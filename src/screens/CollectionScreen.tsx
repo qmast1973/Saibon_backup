@@ -6,7 +6,7 @@ import { isAdmin } from '../domain/access';
 import { useOlderOrders } from '../hooks/useOlderOrders';
 import { formatMoney } from '../domain/format';
 import { getBillingStore, getSubStores, matchesTransaction } from '../domain/groups';
-import { isFeeCharged, isOrder, isReceivable, splitAmounts, toggleFeeCharged } from '../domain/ledger';
+import { isFeeCharged, isFeeWaived, isOrder, isReceivable, setFeeWaived, splitAmounts, toggleFeeCharged } from '../domain/ledger';
 import { DEPOSIT_MARKET } from '../domain/markets';
 import { applyStoreOrder, buildStoreGroups, computeCarryOver, moveToIndex, type CarryOver, type StoreGroup } from '../domain/storeGroups';
 import { compact, fuzzyIncludes, uniqueSorted } from '../domain/text';
@@ -54,7 +54,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
       dayRows.filter(t => {
         if (storeQuery.trim() && !matchesTransaction(t, storeQuery, rules)) return false;
         if (buyer && buyerOf(t) !== buyer && t.manager !== buyer) return false;
-        if (status === '미처리') return isOrder(t) && !isFeeCharged(t);
+        if (status === '미처리') return isOrder(t) && !isFeeCharged(t) && !isFeeWaived(t);
         if (status === '완료') return isOrder(t) && isFeeCharged(t);
         if (status === '미수') {
           const { billed, paid } = splitAmounts(t);
@@ -80,7 +80,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
       billed: allGroups.reduce((s, g) => s + g.billed + g.fee, 0),
       orders: orders.length,
       completed: orders.filter(isFeeCharged).length,
-      unprocessed: orders.filter(t => !isFeeCharged(t)).length,
+      unprocessed: orders.filter(t => !isFeeCharged(t) && !isFeeWaived(t)).length,
       carry: allGroups.reduce((s, g) => s + g.carry, 0),
     };
   }, [dayRows, allGroups]);
@@ -158,6 +158,7 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
         mode="collection"
         onOpenOrder={t => nav.open({ type: 'order', tx: t })}
         onToggleFee={t => run(saveOrders([toggleFeeCharged(t)]))}
+        onWaiveFee={(t, waived) => run(saveOrders([setFeeWaived(t, waived)]))}
         onEditDeposit={setEditDeposit}
         onDeleteDeposit={setDeleteDeposit}
         onCollect={g => setEntry({ store: g.store })}
