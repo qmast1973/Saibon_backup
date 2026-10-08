@@ -7,7 +7,7 @@ import { getFirestore } from 'firebase/firestore';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCKUn8yVyL9V5NP9rpHWbtcDddiwW1MWSQ',
   authDomain: 'ildang-505711.firebaseapp.com',
-  databaseURL: 'https://ildang-505711.asia-southeast1.firebasedatabase.app',
+  databaseURL: 'https://ildang-505711-default-rtdb.firebaseio.com',
   projectId: 'ildang-505711',
   storageBucket: 'ildang-505711.firebasestorage.app',
   messagingSenderId: '176312937811',

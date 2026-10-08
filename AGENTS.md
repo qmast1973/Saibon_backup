@@ -35,7 +35,7 @@
 
 ## 5. Firebase 프로젝트 구성 (임의 변경 금지)
 - 이 앱이 쓰는 Firebase 프로젝트는 **`ildang-505711` (SaibOn) 하나뿐**이다. 로그인(Authentication), 데이터(Realtime Database), Firestore가 모두 여기에 있다.
-- Realtime Database 주소: `https://ildang-505711.asia-southeast1.firebasedatabase.app`
+- Realtime Database 주소: `https://ildang-505711-default-rtdb.firebaseio.com` (프로젝트의 **기본** DB). 예전에 쓰던 두 번째 DB `ildang-505711`(asia-southeast1)은 유료(Blaze) 전용이라 결제를 끊자 사용 중지되어 저장이 안 되는 문제가 있었다. **DB를 여러 개 만들거나 유료 전용 기능에 의존하지 말 것.**
 - **다른 Firebase/Google Cloud 프로젝트를 새로 만들거나 연결하지 말 것.** 과거에 AI 도구가 `purchaseon-351f4` 프로젝트를 임의로 만들어 DB만 따로 연결해 두었다가, 로그인 계정과 데이터가 서로 다른 프로젝트에 갈라져 보안 규칙을 쓸 수 없고 규칙 만료로 서비스가 멈춘 적이 있다. (`purchaseon-351f4`는 폐기 대상이며 코드에서 참조하지 않는다.)
 - DB 보안 규칙은 만료 날짜가 있는 임시 규칙(`now < ...`)을 쓰지 말고, 로그인한 사용자만 허용하는 `auth != null` 이상으로 둔다.
 - DB 주소·프로젝트 설정(`firebase.ts`)을 바꿀 때는 반드시 사용자에게 먼저 확인받는다.
