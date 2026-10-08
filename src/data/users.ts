@@ -93,8 +93,10 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   // 1) 회원 목록 읽기 (이미 Firebase 로그인 상태이거나 규칙이 열려 있으면 성공)
   let users = knownUsers;
   let denied = false;
+  let fromServer = false; // 서버에서 회원 목록을 실제로 읽었는지 (이 기기에 저장된 목록이면 false)
   try {
     users = await fetchUsers();
+    fromServer = true;
   } catch (e) {
     denied = isPermissionDenied(e);
     // 서버가 회원 목록을 안 보여 주면 이 기기에 저장된 목록(새 앱 + 원래 앱)으로 확인한다 (원래 앱과 같은 방식)
@@ -107,6 +109,10 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   if (user?.passwordHash && user.passwordHash === hash) {
     // 이메일 로그인 상태도 맞춰 둔다 (실패해도 원래 앱처럼 로그인은 진행)
     await ensureFirebaseSession(user.email, password);
+    // 서버에 승인된 관리자가 하나도 없으면(새 DB 등) 이 계정이 최초 관리자가 된다
+    if (fromServer && !user.approved && !users.some(u => u.role === 'admin' && u.approved !== false)) {
+      return saveUser({ ...user, role: 'admin', approved: true, updatedAt: new Date().toISOString() });
+    }
     return user;
   }
 
