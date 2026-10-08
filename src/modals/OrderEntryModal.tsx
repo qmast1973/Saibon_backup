@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { AlertCircle, Check, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { Transaction } from '../types';
 import type { Nav } from '../App';
@@ -10,6 +10,7 @@ import { MARKET_SEPARATOR_RE, NON_BUILDING_MARKETS, normalizeMarket } from '../d
 import { compact, uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { Button, ConfirmDialog, Field, Input, Modal, StoreSearch, Textarea } from '../components/ui';
+import { MarketInput } from '../components/MarketInput';
 
 interface Row {
   market: string;
@@ -29,7 +30,6 @@ export function useMarketOptions(): string[] {
 
 export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transaction; nav: Nav; onClose: () => void }) {
   const { user, visibleOrders, rules, orders, saveOrders, notify } = useApp();
-  const listId = useId();
   const marketOptions = useMarketOptions();
   const isEdit = !!editing;
   const isMerchant = user?.role === 'merchant';
@@ -162,12 +162,12 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
           <div className="space-y-2">
             {rows.map((r, i) => (
               <div key={i} className="grid grid-cols-[1.4fr_.7fr_.7fr_28px] items-center gap-2">
-                <Input
-                  list={listId}
+                <MarketInput
+                  options={marketOptions}
                   value={r.market}
                   disabled={locked}
                   placeholder="건물명"
-                  onChange={e => setRow(i, { market: e.target.value })}
+                  onChange={v => setRow(i, { market: v })}
                   onBlur={e => setRow(i, { market: normalizeMarket(e.target.value, r.room) })}
                 />
                 <Input value={r.floor} disabled={locked} placeholder="층" onChange={e => setRow(i, { floor: e.target.value })} />
@@ -186,9 +186,6 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
               </div>
             ))}
           </div>
-          <datalist id={listId}>
-            {marketOptions.filter(m => !MARKET_SEPARATOR_RE.test(m)).map(m => <option key={m} value={m} />)}
-          </datalist>
           {!isEdit && (
             <div className="mt-2 flex justify-end">
               <Button size="sm" onClick={() => setRows(prev => [...prev, emptyRow()])}><Plus className="h-3.5 w-3.5" />줄 추가</Button>
