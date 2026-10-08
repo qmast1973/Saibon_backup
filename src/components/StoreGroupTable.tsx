@@ -272,18 +272,18 @@ function StoreOrdersModal({
                   </Badge>
                 )}
                 {!deposit && <span className="text-[11px] text-gray-400">{formatLocation({ floor: t.floor, room: t.room })}</span>}
-                <b className="text-[13px] text-gray-100">{t.store || '상호 없음'}</b>
+                {compact(t.store) !== compact(group.store) && <b className="text-[13px] text-gray-100">{t.store || '상호 없음'}</b>}
                 {compact(t.store) !== compact(group.store) && <Badge className="bg-violet-900/60 text-violet-200">종속</Badge>}
                 {(t.remark || t.processingRemark) && <span className="truncate rounded bg-amber-950 px-1.5 py-0.5 text-[11px] text-amber-200">{[t.remark, t.processingRemark].filter(Boolean).join(' | ')}</span>}
               </div>
-              <div className="flex shrink-0 items-center justify-end gap-2">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 [&_button]:whitespace-nowrap">
                 {!isCollection && <span className="text-xs text-gray-400">갯수 <b className="text-white">{t.itemCount || 0}</b></span>}
-                <span className="min-w-[64px] text-right font-mono text-[13px] font-bold">
+                <span className="min-w-[64px] whitespace-nowrap text-right font-mono text-[13px] font-bold">
                   {billed > 0 ? <span className="text-rose-400">{formatMoney(billed)}</span> : paid > 0 ? <span className="text-emerald-400">+{formatMoney(paid)}</span> : <span className="text-gray-500">0</span>}
                 </span>
                 {!deposit && onOpenOrder && <Button size="sm" onClick={() => { onClose(); onOpenOrder(t); }}>주문확인</Button>}
                 {isCollection && !deposit && onWaiveFee && (
-                  <label className={cx('flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold', feeOff ? 'border-sky-600 bg-sky-950 text-sky-200' : 'border-gray-700 bg-gray-900 text-gray-300')}>
+                  <label className={cx('flex min-h-10 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-xs font-bold', feeOff ? 'border-sky-600 bg-sky-950 text-sky-200' : 'border-gray-700 bg-gray-900 text-gray-300')}>
                     <input type="checkbox" className="h-4 w-4 accent-sky-500" checked={feeOff} onChange={e => onWaiveFee(t, e.target.checked)} />
                     사입비 제외
                   </label>
