@@ -1,4 +1,4 @@
-import { endAt, get, limitToLast, onValue, orderByKey, query, ref, remove, set, startAt, update } from 'firebase/database';
+import { endAt, get, limitToLast, onValue, orderByKey, query, ref, set, startAt, update } from 'firebase/database';
 import type { Transaction } from '../types';
 import { normalizeDate } from '../domain/dates';
 import { parseAmount } from '../domain/format';
@@ -186,6 +186,75 @@ export function prepareForSave(t: Transaction, previous?: Transaction): { tx: Tr
   return { tx, updates };
 }
 
+/**
+ * 서버에 쓰기. Firebase 는 연결이 불안정하면 쓰기를 메모리에만 쌓아 두므로 화면에는 보여도 새로고침하면 사라진다.
+ * 그래서 보내기 전에 기기에 보관(outbox)했다가 서버가 받았다고 답하면 지우고, 못 지운 것은 다음에 앱을 열 때 다시 보낸다.
+ */
+const OUTBOX_KEY = 'saipon.outbox';
+const OUTBOX_MAX_AGE = 7 * 24 * 3600 * 1000;
+interface OutboxItem { id: string; at: number; updates: OrderUpdates }
+const inflight = new Set<string>();
+
+type WriteNotice = 'slow' | 'done';
+let writeNotice: ((kind: WriteNotice) => void) | null = null;
+export const onWriteNotice = (fn: ((kind: WriteNotice) => void) | null) => { writeNotice = fn; };
+
+function readOutbox(): OutboxItem[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]') as OutboxItem[];
+    return Array.isArray(list) ? list.filter(x => x && x.id && x.updates && Date.now() - x.at < OUTBOX_MAX_AGE) : [];
+  } catch {
+    return [];
+  }
+}
+function writeOutbox(list: OutboxItem[]) {
+  try {
+    localStorage.setItem(OUTBOX_KEY, JSON.stringify(list));
+  } catch { /* 저장 공간이 없으면 보관 없이 진행 */ }
+}
+const outboxAdd = (item: OutboxItem) => writeOutbox([...readOutbox().filter(x => x.id !== item.id), item]);
+const outboxRemove = (id: string) => writeOutbox(readOutbox().filter(x => x.id !== id));
+
+async function commit(updates: OrderUpdates, label: string): Promise<void> {
+  if (IS_DEMO) return;
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  outboxAdd({ id, at: Date.now(), updates });
+  inflight.add(id);
+  let slow = false;
+  const p = update(ref(rtdb), updates);
+  p.then(
+    () => { inflight.delete(id); outboxRemove(id); if (slow) writeNotice?.('done'); },
+    () => { inflight.delete(id); outboxRemove(id); }, // 권한 오류 등은 다시 보내도 소용없으므로 호출한 쪽에 알리고 지운다
+  );
+  try {
+    await withTimeout(p, 15000, label);
+  } catch (e) {
+    if (!String((e as Error)?.message).includes('시간 초과')) throw e;
+    slow = true;
+    writeNotice?.('slow');
+  }
+}
+
+/** 지난번에 서버가 받았다고 확인하지 못한 쓰기를 다시 보낸다 (앱을 열 때 · 인터넷이 돌아올 때) */
+export async function flushOutbox(): Promise<number> {
+  if (IS_DEMO) return 0;
+  let sent = 0;
+  for (const item of readOutbox()) {
+    if (inflight.has(item.id)) continue;
+    inflight.add(item.id);
+    try {
+      await withTimeout(update(ref(rtdb), item.updates), 20000, '저장 재시도');
+      outboxRemove(item.id);
+      sent++;
+    } catch {
+      // 다음에 다시 시도
+    } finally {
+      inflight.delete(item.id);
+    }
+  }
+  return sent;
+}
+
 export async function saveOrders(list: Transaction[], previous: Map<string, Transaction> = new Map()): Promise<Transaction[]> {
   const saved: Transaction[] = [];
   const updates: OrderUpdates = {};
@@ -194,9 +263,7 @@ export async function saveOrders(list: Transaction[], previous: Map<string, Tran
     saved.push(prepared.tx);
     Object.assign(updates, prepared.updates);
   }
-  if (Object.keys(updates).length > 0) {
-    if (!IS_DEMO) await write(update(ref(rtdb), updates), '주문 저장', 15000);
-  }
+  if (Object.keys(updates).length > 0) await commit(updates, '주문 저장');
   return saved;
 }
 
@@ -204,7 +271,7 @@ export async function deleteOrder(t: Transaction): Promise<void> {
   const orderId = t.firebaseOrderId;
   const dateKey = t.firebaseDate || normalizeDate(t.date);
   if (!orderId || !dateKey || IS_DEMO) return;
-  await write(remove(ref(rtdb, `orders/${dateKey}/${orderId}`)), '주문 삭제');
+  await commit({ [`orders/${dateKey}/${orderId}`]: null }, '주문 삭제');
 }
 
 /**
