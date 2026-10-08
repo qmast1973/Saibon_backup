@@ -260,6 +260,7 @@ function StoreOrdersModal({
           const deposit = isDeposit(t);
           const completed = done(t);
           const waived = isCollection && !deposit && isFeeWaived(t);
+          const feeOff = !!t.isFeeExcluded && !t.isFeeIncluded; // 처리 전 주문에도 미리 체크해 둘 수 있다
           const { billed, paid } = isCollection ? splitAmounts(t) : { billed: Number(t.expense) || 0, paid: Number(t.income) || 0 };
           return (
             <div key={t.id} className={cx('flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between', !deposit && waived ? 'border-sky-900 bg-sky-950/20' : !deposit && completed ? 'border-emerald-900 bg-emerald-950/20' : 'border-gray-800 bg-gray-800/40')}>
@@ -281,13 +282,13 @@ function StoreOrdersModal({
                   {billed > 0 ? <span className="text-rose-400">{formatMoney(billed)}</span> : paid > 0 ? <span className="text-emerald-400">+{formatMoney(paid)}</span> : <span className="text-gray-500">0</span>}
                 </span>
                 {!deposit && onOpenOrder && <Button size="sm" onClick={() => { onClose(); onOpenOrder(t); }}>주문확인</Button>}
-                {isCollection && !deposit && onWaiveFee && hasStatus(t) && (
-                  <label className={cx('flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold', waived ? 'border-sky-600 bg-sky-950 text-sky-200' : 'border-gray-700 bg-gray-900 text-gray-300')}>
-                    <input type="checkbox" className="h-4 w-4 accent-sky-500" checked={waived} onChange={e => onWaiveFee(t, e.target.checked)} />
+                {isCollection && !deposit && onWaiveFee && (
+                  <label className={cx('flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold', feeOff ? 'border-sky-600 bg-sky-950 text-sky-200' : 'border-gray-700 bg-gray-900 text-gray-300')}>
+                    <input type="checkbox" className="h-4 w-4 accent-sky-500" checked={feeOff} onChange={e => onWaiveFee(t, e.target.checked)} />
                     사입비 제외
                   </label>
                 )}
-                {isCollection && !deposit && onToggleFee && !hasStatus(t) && (
+                {isCollection && !deposit && onToggleFee && !hasStatus(t) && !feeOff && (
                   <Button size="sm" tone={completed ? 'secondary' : 'success'} onClick={() => onToggleFee(t)}>{completed ? '미처리 전환' : '완료 처리'}</Button>
                 )}
                 {isCollection && deposit && (
