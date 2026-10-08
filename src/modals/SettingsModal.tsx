@@ -3,6 +3,7 @@ import { BookOpen, Building2, ChevronRight, Database, Layers, Settings, Users } 
 import type { Nav } from '../App';
 import { hasAdminAccess, isAdmin } from '../domain/access';
 import { useApp } from '../state/AppContext';
+import { APP_VERSION_LABEL } from '../lib/version';
 import { FontSizePicker } from '../components/FontSizePicker';
 import { Modal, Toggle } from '../components/ui';
 
@@ -51,6 +52,7 @@ export function SettingsModal({ nav, onClose }: { nav: Nav; onClose: () => void 
         {hasAdminAccess(user) && <MenuItem icon={<Users className="h-5 w-5" />} title="회원 관리" description="가입 승인, 권한, 담당 건물/거래처, 비밀번호 초기화" onClick={() => go('users')} />}
         {isAdmin(user) && <MenuItem icon={<Building2 className="h-5 w-5" />} title="건물 목록 관리" description="주문 입력 시 고르는 건물명 목록" onClick={() => go('buildings')} />}
         {hasAdminAccess(user) && <MenuItem icon={<Database className="h-5 w-5" />} title="데이터 관리" description="엑셀 가져오기/내보내기, 백업 · 복원, 중복 정리" onClick={() => go('data')} />}
+        <p className="pt-1 text-center text-[11px] text-gray-500">사입ON {APP_VERSION_LABEL}</p>
       </div>
     </Modal>
   );

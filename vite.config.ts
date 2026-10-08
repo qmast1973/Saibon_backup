@@ -2,8 +2,14 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
+// 빌드한 시각(한국 시간) — 같은 버전이라도 언제 올린 것인지 구분한다
+const buildTime = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ');
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_TIME__: JSON.stringify(buildTime) },
   // GitHub Pages 하위 경로에서도 동작하도록 상대 경로로 빌드
   base: './',
   plugins: [

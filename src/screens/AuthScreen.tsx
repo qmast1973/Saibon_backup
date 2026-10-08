@@ -7,6 +7,7 @@ import { uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
 import { AdminCreateModal } from '../modals/AdminCreateModal';
 import { FontSizePicker } from '../components/FontSizePicker';
+import { APP_VERSION_LABEL } from '../lib/version';
 import { Button, Field, Input, LoginIdInput, PasswordInput, Select, cx } from '../components/ui';
 import { Logo } from '../components/Logo';
 
@@ -269,6 +270,7 @@ export function AuthScreen() {
           <div className="mt-5">
             <FontSizePicker compact />
           </div>
+          <p className="mt-3 text-center text-[11px] text-gray-500">사입ON {APP_VERSION_LABEL}</p>
         </div>
       </div>
       {showAdminCreate && <AdminCreateModal onClose={() => setShowAdminCreate(false)} />}
