@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, GripVertical, Layers, Pencil, Plus, Store, Tras
 import type { Transaction } from '../types';
 import { formatLocation, formatMoney } from '../domain/format';
 import { getSubStores, sortByStoreFocus } from '../domain/groups';
-import { hasStatus, isDeposit, isFeeCharged, isOrder, splitAmounts } from '../domain/ledger';
+import { hasStatus, isDeposit, isFeeCharged, isFeeWaived, isOrder, splitAmounts } from '../domain/ledger';
 import type { GroupMode, StoreGroup } from '../domain/storeGroups';
 import { compact } from '../domain/text';
 import { useRowDrag } from '../hooks/useRowDrag';
@@ -13,6 +13,8 @@ import { Badge, Button, EmptyState, Modal, cx } from './ui';
 interface Actions {
   onOpenOrder?: (t: Transaction) => void;
   onToggleFee?: (t: Transaction) => void;
+  /** 수금관리: 완료된 주문의 사입비만 빼 준다 (서비스) */
+  onWaiveFee?: (t: Transaction, waived: boolean) => void;
   onEditDeposit?: (t: Transaction) => void;
   onDeleteDeposit?: (t: Transaction) => void;
   onCollect?: (g: StoreGroup) => void;
@@ -208,7 +210,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
 }
 
 function StoreOrdersModal({
-  group, mode, initialSub, onClose, onOpenOrder, onToggleFee, onEditDeposit, onDeleteDeposit, onCollect,
+  group, mode, initialSub, onClose, onOpenOrder, onToggleFee, onWaiveFee, onEditDeposit, onDeleteDeposit, onCollect,
 }: { group: StoreGroup; mode: GroupMode; initialSub: string | null; onClose: () => void } & Actions) {
   const { rules } = useApp();
   const [sub, setSub] = useState<string | null>(initialSub);
@@ -230,7 +232,7 @@ function StoreOrdersModal({
   return (
     <Modal
       title={`${group.store} 상세 내역`}
-      subtitle={<><span className="text-emerald-400">완료 {orders.filter(done).length}건</span> · <span className="text-amber-400">미처리 {orders.filter(t => !done(t)).length}건</span>{isCollection && <> · 미수금 <b className="text-amber-300">{formatMoney(group.balance)}</b></>}</>}
+      subtitle={<><span className="text-emerald-400">완료 {orders.filter(done).length}건</span> · {isCollection && orders.some(isFeeWaived) && <><span className="text-sky-300">사입비 제외 {orders.filter(isFeeWaived).length}건</span> · </>}<span className="text-amber-400">미처리 {orders.filter(t => !done(t) && !(isCollection && isFeeWaived(t))).length}건</span>{isCollection && <> · 미수금 <b className="text-amber-300">{formatMoney(group.balance)}</b></>}</>}
       icon={<Layers className="h-5 w-5 text-indigo-400" />}
       onClose={onClose}
       size="lg"
@@ -257,14 +259,15 @@ function StoreOrdersModal({
         {shown.map(t => {
           const deposit = isDeposit(t);
           const completed = done(t);
+          const waived = isCollection && !deposit && isFeeWaived(t);
           const { billed, paid } = isCollection ? splitAmounts(t) : { billed: Number(t.expense) || 0, paid: Number(t.income) || 0 };
           return (
-            <div key={t.id} className={cx('flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between', !deposit && completed ? 'border-emerald-900 bg-emerald-950/20' : 'border-gray-800 bg-gray-800/40')}>
+            <div key={t.id} className={cx('flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between', !deposit && waived ? 'border-sky-900 bg-sky-950/20' : !deposit && completed ? 'border-emerald-900 bg-emerald-950/20' : 'border-gray-800 bg-gray-800/40')}>
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                 <Badge className={deposit ? 'bg-emerald-900/60 text-emerald-300' : 'bg-gray-700 text-gray-200'}>{t.market || '-'}</Badge>
                 {!deposit && (
-                  <Badge className={completed ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-400'}>
-                    {completed ? '완료' : '미처리'}{t.status && t.status !== '완료' ? ` (${t.status})` : ''}
+                  <Badge className={waived ? 'bg-sky-950 text-sky-300' : completed ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-400'}>
+                    {waived ? '사입비 제외' : completed ? '완료' : '미처리'}{t.status && t.status !== '완료' ? ` (${t.status})` : ''}
                   </Badge>
                 )}
                 {!deposit && <span className="text-[11px] text-gray-400">{formatLocation({ floor: t.floor, room: t.room })}</span>}
@@ -278,7 +281,13 @@ function StoreOrdersModal({
                   {billed > 0 ? <span className="text-rose-400">{formatMoney(billed)}</span> : paid > 0 ? <span className="text-emerald-400">+{formatMoney(paid)}</span> : <span className="text-gray-500">0</span>}
                 </span>
                 {!deposit && onOpenOrder && <Button size="sm" onClick={() => { onClose(); onOpenOrder(t); }}>주문확인</Button>}
-                {isCollection && !deposit && onToggleFee && (
+                {isCollection && !deposit && onWaiveFee && hasStatus(t) && (
+                  <label className={cx('flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold', waived ? 'border-sky-600 bg-sky-950 text-sky-200' : 'border-gray-700 bg-gray-900 text-gray-300')}>
+                    <input type="checkbox" className="h-4 w-4 accent-sky-500" checked={waived} onChange={e => onWaiveFee(t, e.target.checked)} />
+                    사입비 제외
+                  </label>
+                )}
+                {isCollection && !deposit && onToggleFee && !hasStatus(t) && (
                   <Button size="sm" tone={completed ? 'secondary' : 'success'} onClick={() => onToggleFee(t)}>{completed ? '미처리 전환' : '완료 처리'}</Button>
                 )}
                 {isCollection && deposit && (

@@ -30,6 +30,14 @@ export function isFeeCharged(t: Transaction): boolean {
   return (hasStatus(t) && !t.isFeeExcluded) || !!t.isFeeIncluded;
 }
 
+/** 완료된 주문인데 사입비만 빼 준 경우 (반품만 · 주고옴 같은 서비스 건) */
+export const isFeeWaived = (t: Transaction) => hasStatus(t) && !isFeeCharged(t);
+
+/** 사입비 제외(서비스) 설정 또는 해제. 해제하면 상태대로 다시 부과 */
+export function setFeeWaived(t: Transaction, waived: boolean): Transaction {
+  return { ...t, isFeeExcluded: waived, isFeeIncluded: false };
+}
+
 /** 사입비 부과 여부를 뒤집은 주문 */
 export function toggleFeeCharged(t: Transaction): Transaction {
   const charged = isFeeCharged(t);

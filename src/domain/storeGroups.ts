@@ -1,7 +1,7 @@
 import type { GroupRule, Transaction, User } from '../types';
 import { getBillingStore, getMonthlyPurchase } from './groups';
 import { DEFAULT_MARKETS, normalizeMarket } from './markets';
-import { FEE_PER_ORDER, hasStatus, isFeeCharged, isOrder, isReceivable, splitAmounts } from './ledger';
+import { FEE_PER_ORDER, hasStatus, isFeeCharged, isFeeWaived, isOrder, isReceivable, splitAmounts } from './ledger';
 import { sortKo } from './text';
 
 /** 대표 거래처 단위로 묶은 한 줄 (수금관리 · 갯수 집계 공용) */
@@ -86,6 +86,7 @@ export function buildStoreGroups(
     if (!isOrder(t)) continue;
     if (opts.mode === 'collection' && !(billed > 0 || (billed === 0 && paid === 0))) continue;
     g.orderCount++;
+    if (opts.mode === 'collection' && isFeeWaived(t)) continue; // 서비스(사입비 제외)는 완료·미처리 어디에도 넣지 않는다
     const done = opts.mode === 'collection' ? isFeeCharged(t) : hasStatus(t);
     if (done) g.completedCount++;
     else g.unprocessedCount++;
