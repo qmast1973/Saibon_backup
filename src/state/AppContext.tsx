@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { GroupRule, Transaction, User } from '../types';
 import * as cache from '../data/localCache';
-import { deleteOrder as deleteOrderRemote, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
+import { deleteOrder as deleteOrderRemote, newOrderId, prepareForSave, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
 import { saveGroupRules, subscribeGroupRules } from '../data/groupRules';
 import { fetchMarkets } from '../data/settings';
 import { isPermissionDenied, saveStoreOrder as saveStoreOrderRemote, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
@@ -44,6 +44,8 @@ interface AppState {
 
   /** 저장하고 확정된 주문(서버 id 포함)을 돌려준다. 화면에는 즉시 반영. */
   saveOrders: (list: Transaction[]) => Promise<Transaction[]>;
+  /** 새 기록을 화면에 먼저 넣고 서버 저장은 뒤에서 한다. 저장에 실패하면 화면에서 빼고 알린다. */
+  addOrdersFast: (list: Transaction[]) => Transaction[];
   deleteOrder: (t: Transaction) => Promise<void>;
   /** 화면에만 즉시 반영 (입력 중 값) */
   patchOrderLocal: (t: Transaction) => void;
@@ -242,6 +244,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return saved;
   }, [notify]);
 
+  const addOrdersFast = useCallback((list: Transaction[]) => {
+    const prepared = list.map(t => prepareForSave({ ...t, firebaseOrderId: t.firebaseOrderId || newOrderId() }).tx);
+    setOrders(prev => upsert(prev, prepared));
+    saveOrdersRemote(prepared).catch(e => {
+      const ids = new Set(prepared.map(t => t.id));
+      setOrders(prev => prev.filter(t => !ids.has(t.id)));
+      notify(`저장하지 못했습니다: ${e instanceof Error ? e.message : e}`, 'error');
+    });
+    return prepared;
+  }, [notify]);
+
   const deleteOrder = useCallback(async (t: Transaction) => {
     setOrders(prev => prev.filter(o => o.id !== t.id));
     await deleteOrderRemote(t);
@@ -289,7 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     ready, usersAccess, online, user, users, orders, visibleOrders, rules, markets, includeFee, showFeeWaive, toasts,
     login, logout, setIncludeFee, setShowFeeWaive, setMarkets, notify, dismissToast,
-    saveOrders, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
+    saveOrders, addOrdersFast, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
