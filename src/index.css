@@ -90,3 +90,16 @@ html {
     font-size: 0.8rem !important;
   }
 }
+
+/*
+ * 글자 대비 높이기 (어르신도 돋보기 없이 읽도록).
+ * 어두운 배경 위의 회색 · 어두운 색 글자를 한 단계 밝게 한다. 배경색 · 테두리색에는 영향이 없다.
+ * 이 규칙은 레이어 밖에 있어 Tailwind 유틸리티보다 우선한다.
+ */
+.text-gray-300 { color: #e5e7eb; }
+.text-gray-400 { color: #c3c9d4; }
+.text-gray-500 { color: #aeb6c4; }
+.text-gray-600 { color: #98a1b1; }
+.text-indigo-400 { color: #a5b4fc; }
+.text-rose-400 { color: #fda4af; }
+input::placeholder, textarea::placeholder { color: #9aa3b2; opacity: 1; }
