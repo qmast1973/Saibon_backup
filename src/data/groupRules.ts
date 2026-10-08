@@ -1,12 +1,8 @@
 import { onValue, ref, set } from 'firebase/database';
-import { collection, deleteDoc, doc, getDocs, writeBatch } from 'firebase/firestore';
 import type { GroupRule } from '../types';
-import { firestore, IS_DEMO, rtdb, withTimeout, write } from './firebase';
+import { IS_DEMO, rtdb, write } from './firebase';
 
-/**
- * 대표거래처 규칙은 RTDB collectionGroupRules (배열) 가 기준이다.
- * 같은 DB를 쓰는 기존 앱이 Firestore collectionGroupRules 도 읽으므로 저장할 때 함께 맞춰 둔다.
- */
+/** 대표거래처 규칙은 RTDB collectionGroupRules (배열)에 저장한다. */
 
 function cleanRule(r: Partial<GroupRule>, index: number): GroupRule | null {
   const storeName = String(r.storeName || '').trim();
@@ -39,28 +35,13 @@ export function subscribeGroupRules(onChange: (rules: GroupRule[]) => void, onEr
   return onValue(ref(rtdb, 'collectionGroupRules'), snap => onChange(cleanRules(snap.val())), e => onError?.(e));
 }
 
-async function mirrorToFirestore(rules: GroupRule[]): Promise<void> {
-  const col = collection(firestore, 'collectionGroupRules');
-  const batch = writeBatch(firestore);
-  const existing = await withTimeout(getDocs(col), 5000, 'Firestore 조회');
-  const keep = new Set(rules.map(r => r.id));
-  existing.docs.forEach(d => {
-    if (!keep.has(d.id)) batch.delete(d.ref);
-  });
-  rules.forEach(r => batch.set(doc(firestore, 'collectionGroupRules', r.id), r));
-  await withTimeout(batch.commit(), 8000, 'Firestore 저장');
-}
-
 export async function saveGroupRules(rules: GroupRule[]): Promise<void> {
   if (IS_DEMO) return;
   const clean = cleanRules(rules);
   await write(set(ref(rtdb, 'collectionGroupRules'), clean), '대표거래처 저장');
-  mirrorToFirestore(clean).catch(e => console.warn('Firestore 대표거래처 동기화 실패:', e));
 }
 
 export async function deleteAllGroupRules(): Promise<void> {
   if (IS_DEMO) return;
   await set(ref(rtdb, 'collectionGroupRules'), null);
-  const snap = await getDocs(collection(firestore, 'collectionGroupRules')).catch(() => null);
-  await Promise.all((snap?.docs || []).map(d => deleteDoc(d.ref))).catch(() => undefined);
 }
