@@ -6,7 +6,8 @@ import { saveGroupRules, subscribeGroupRules } from '../data/groupRules';
 import { fetchMarkets } from '../data/settings';
 import { isPermissionDenied, saveStoreOrder as saveStoreOrderRemote, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, IS_DEMO } from '../data/firebase';
+import { onValue, ref } from 'firebase/database';
+import { auth, IS_DEMO, rtdb } from '../data/firebase';
 import { filterVisible, isRelevantForBuyer } from '../domain/access';
 import { normalizeDate } from '../domain/dates';
 import { normalizeMarket } from '../domain/markets';
@@ -22,6 +23,7 @@ interface AppState {
   /** 회원 목록 읽기 상태: 아직 모름 / 읽음 / 서버가 거부(이메일 로그인 필요) */
   usersAccess: 'unknown' | 'ok' | 'denied';
   online: boolean;
+  serverConnected: boolean; // Firebase 서버와 실제로 연결돼 있는지 (인터넷이 있어도 끊겨 있을 수 있다)
   user: User | null;
   users: User[];
   /** DB의 전체 주문 (최근 90일) */
@@ -86,6 +88,7 @@ function upsert(list: Transaction[], changed: Transaction[]): Transaction[] {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [serverConnected, setServerConnected] = useState(true);
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [user, setUser] = useState<User | null>(() => cache.loadSession());
   const [users, setUsers] = useState<User[]>(() => cache.loadCachedUsers());
@@ -185,6 +188,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     flushOutbox().then(n => { if (n > 0) notify(`저장되지 않았던 ${n}건을 서버에 다시 저장했습니다.`, 'success'); });
     const retry = () => { flushOutbox(); };
+    // 서버 연결이 5초 넘게 끊겨 있으면 알린다 (그 사이 저장은 서버에 가지 못한다)
+    let downTimer: ReturnType<typeof setTimeout> | undefined;
+    const offConn = IS_DEMO ? () => undefined : onValue(ref(rtdb, '.info/connected'), s => {
+      clearTimeout(downTimer);
+      if (s.val() === true) { setServerConnected(true); flushOutbox(); } else downTimer = setTimeout(() => setServerConnected(false), 5000);
+    });
     window.addEventListener('online', retry);
 
     const unsubOrders = subscribeOrders(list => {
@@ -211,6 +220,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubUsers();
       unsubOrders();
       window.removeEventListener('online', retry);
+      clearTimeout(downTimer);
+      offConn();
       onWriteNotice(null);
       unsubRules();
     };
@@ -310,7 +321,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const visibleOrders = useMemo(() => (user ? filterVisible(orders, user, users, rules) : []), [orders, user, users, rules]);
 
   const value: AppState = {
-    ready, usersAccess, online, user, users, orders, visibleOrders, rules, markets, includeFee, showFeeWaive, toasts,
+    ready, usersAccess, online, serverConnected, user, users, orders, visibleOrders, rules, markets, includeFee, showFeeWaive, toasts,
     login, logout, setIncludeFee, setShowFeeWaive, setMarkets, notify, dismissToast,
     saveOrders, addOrdersFast, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
   };
