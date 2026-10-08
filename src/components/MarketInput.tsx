@@ -10,12 +10,13 @@ const sepLabel = (s: string) => s.replace(/^=+\s*|\s*=+$/g, '').trim();
  * (브라우저 기본 목록은 구분선을 보여 줄 수 없어 직접 만든 목록을 쓴다)
  */
 export function MarketInput({
-  value, options, disabled, placeholder, onChange, onBlur,
+  value, options, disabled, placeholder, className, onChange, onBlur,
 }: {
   value: string;
   options: string[];
   disabled?: boolean;
   placeholder?: string;
+  className?: string;
   onChange: (v: string) => void;
   onBlur: (e: FocusEvent<HTMLInputElement>) => void;
 }) {
@@ -52,7 +53,7 @@ export function MarketInput({
   const shown = filtering ? options.filter(o => !MARKET_SEPARATOR_RE.test(o) && o.toLowerCase().includes(q)) : options;
 
   return (
-    <div ref={ref} className="min-w-0">
+    <div ref={ref} className={cx('min-w-0', className)}>
       <Input
         value={value}
         disabled={disabled}

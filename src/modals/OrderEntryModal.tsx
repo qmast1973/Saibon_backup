@@ -119,6 +119,7 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
 
   return (
     <Modal
+      big
       title={isEdit ? '사입 주문 수정' : '신규 사입 주문'}
       icon={<Plus className="h-5 w-5 text-indigo-400" />}
       onClose={onClose}
@@ -138,7 +139,7 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
       }
     >
       <form id="order-form" onSubmit={submit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="날짜 *">
             <Input type="date" required value={date} disabled={locked} onChange={e => setDate(e.target.value)} />
           </Field>
@@ -156,25 +157,26 @@ export function OrderEntryModal({ editing, nav, onClose }: { editing?: Transacti
         </div>
 
         <div>
-          <div className="mb-1.5 grid grid-cols-[1.4fr_.7fr_.7fr_28px] gap-2 text-[11px] font-bold text-gray-400">
+          <div className="mb-1.5 hidden grid-cols-[1.4fr_.7fr_.7fr_28px] gap-2 text-[11px] font-bold text-gray-400 sm:grid">
             <span>건물명 *</span><span>층 *</span><span>호수 *</span><span />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-4 sm:space-y-2">
             {rows.map((r, i) => (
-              <div key={i} className="grid grid-cols-[1.4fr_.7fr_.7fr_28px] items-center gap-2">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.25rem] items-center gap-2 sm:grid-cols-[1.4fr_.7fr_.7fr_28px]">
                 <MarketInput
+                  className="col-span-3 sm:col-span-1"
                   options={marketOptions}
                   value={r.market}
                   disabled={locked}
-                  placeholder="건물명"
+                  placeholder="건물명 *"
                   onChange={v => setRow(i, { market: v })}
                   onBlur={e => setRow(i, { market: normalizeMarket(e.target.value, r.room) })}
                 />
-                <Input value={r.floor} disabled={locked} placeholder="층" onChange={e => setRow(i, { floor: e.target.value })} />
+                <Input value={r.floor} disabled={locked} placeholder="층 *" onChange={e => setRow(i, { floor: e.target.value })} />
                 <Input
                   value={r.room}
                   disabled={locked}
-                  placeholder="호수"
+                  placeholder="호수 *"
                   onChange={e => setRow(i, { room: e.target.value })}
                   onBlur={e => r.market && setRow(i, { market: normalizeMarket(r.market, e.target.value) })}
                 />
