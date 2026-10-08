@@ -5,6 +5,7 @@ import type { Nav } from '../App';
 import { deleteAllPosts } from '../data/board';
 import { deleteAllGroupRules } from '../data/groupRules';
 import { clearAllCaches } from '../data/localCache';
+import { diagnoseSave } from '../data/diagnose';
 import { deleteAllOrders, deleteOrders, fetchAllOrders, measureStorage, type StorageUsage } from '../data/orders';
 import { deleteNonAdminUsers } from '../data/users';
 import { isAdmin } from '../domain/access';
@@ -59,6 +60,7 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
   const admin = isAdmin(user);
   const [busy, setBusy] = useState('');
   const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => Promise<void> } | null>(null);
+  const [diagLines, setDiagLines] = useState<string[]>([]);
   const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [excelRows, setExcelRows] = useState<ExcelRow[] | null>(null);
   // 미리보기(데모)는 서버에 접속하지 않으므로 화면에 있는 주문으로 대신한다
@@ -87,6 +89,12 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
   const checkStorage = () =>
     task('저장 공간 확인', async () => {
       setUsage(await measureStorage((done, total) => setBusy(`저장 공간 확인 (${done}/${total}개월)`)));
+    });
+
+  const runDiagnose = () =>
+    task('저장 진단', async () => {
+      setDiagLines([]);
+      await diagnoseSave(line => setDiagLines(prev => [...prev, line]));
     });
 
   const exportExcel = () =>
@@ -239,6 +247,13 @@ export function DataModal({ nav, onClose }: { nav: Nav; onClose: () => void }) {
         <Section title="중복 정리" description="엑셀을 여러 번 올리는 등으로 완전히 같은 주문이 여러 개 생긴 경우, 1건만 남기고 정리합니다.">
           <Button tone="warning" disabled={!!busy} onClick={dedupe}><Layers className="h-4 w-4" />중복 데이터 찾기</Button>
         </Section>
+
+        {admin && (
+          <Section title="저장 진단 (관리자)" description="저장이 서버까지 가는지 단계별로 확인합니다. 저장이 안 될 때 눌러서 결과 화면을 보내 주세요. (diag 경로에 확인용 값 1개를 씁니다)">
+            <Button disabled={!!busy} onClick={runDiagnose}><Database className="h-4 w-4" />저장 진단 시작</Button>
+            {diagLines.length > 0 && <pre className="w-full whitespace-pre-wrap break-all rounded-xl bg-gray-950 p-3 text-xs leading-relaxed text-gray-200">{diagLines.join('\n')}</pre>}
+          </Section>
+        )}
 
         {admin && (
           <Section title="저장 공간 (관리자)" description="서버에 저장된 데이터 크기를 대략 계산합니다. 무료 플랜 한도는 1GB이며, 넘기 전에 유료 플랜(Blaze)으로 바꾸세요.">

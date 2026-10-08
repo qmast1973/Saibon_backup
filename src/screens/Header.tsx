@@ -10,7 +10,7 @@ import { Logo } from '../components/Logo';
 const pill = 'inline-flex min-h-[36px] items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition active:scale-[0.97] sm:min-h-0 sm:px-2.5 sm:py-1 sm:text-xs';
 
 export function Header({ nav }: { nav: Nav }) {
-  const { user, online, logout } = useApp();
+  const { user, online, serverConnected, logout } = useApp();
   if (!user) return null;
 
   return (
@@ -37,6 +37,11 @@ export function Header({ nav }: { nav: Nav }) {
           {!online && (
             <span className={cx(pill, 'bg-amber-600')}>
               <WifiOff className="h-3.5 w-3.5" /> 오프라인
+            </span>
+          )}
+          {online && !serverConnected && (
+            <span className={cx(pill, 'bg-rose-700')} title="인터넷은 되지만 서버와 연결되지 않았습니다. 이 상태에서 입력한 내용은 서버에 저장되지 않을 수 있습니다.">
+              <WifiOff className="h-3.5 w-3.5" /> 서버 연결 안 됨
             </span>
           )}
           {isBuyerLike(user) && (
