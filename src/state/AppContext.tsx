@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { GroupRule, Transaction, User } from '../types';
 import * as cache from '../data/localCache';
-import { deleteOrder as deleteOrderRemote, newOrderId, prepareForSave, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
+import { deleteOrder as deleteOrderRemote, flushOutbox, newOrderId, onWriteNotice, prepareForSave, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
 import { saveGroupRules, subscribeGroupRules } from '../data/groupRules';
 import { fetchMarkets } from '../data/settings';
 import { isPermissionDenied, saveStoreOrder as saveStoreOrderRemote, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
@@ -179,6 +179,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }, logError('회원'));
 
+    onWriteNotice(kind => {
+      if (kind === 'slow') notify('서버 응답이 늦어 아직 저장 중입니다. 앱을 닫거나 새로고침하지 말고 잠시 기다려 주세요.', 'info');
+      else notify('저장이 완료되었습니다.', 'success');
+    });
+    flushOutbox().then(n => { if (n > 0) notify(`저장되지 않았던 ${n}건을 서버에 다시 저장했습니다.`, 'success'); });
+    const retry = () => { flushOutbox(); };
+    window.addEventListener('online', retry);
+
     const unsubOrders = subscribeOrders(list => {
       const clean = tidy(list);
       const me = userRef.current;
@@ -202,6 +210,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubUsers();
       unsubOrders();
+      window.removeEventListener('online', retry);
+      onWriteNotice(null);
       unsubRules();
     };
   }, [notify, authKey]);
