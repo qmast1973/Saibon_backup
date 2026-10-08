@@ -126,7 +126,7 @@ export function AuthScreen() {
     <div className="auth-screen flex min-h-dvh items-start justify-center overflow-y-auto bg-gray-950 p-3 sm:items-center sm:p-4">
       <div className="my-auto w-full max-w-md overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
         <div className="flex justify-center bg-indigo-950 px-4 py-5">
-          <Logo className="h-36 sm:h-48" />
+          <Logo className="h-44 sm:h-56" />
         </div>
 
         <div className="p-4 sm:p-6">
