@@ -212,7 +212,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
 function StoreOrdersModal({
   group, mode, initialSub, onClose, onOpenOrder, onToggleFee, onWaiveFee, onEditDeposit, onDeleteDeposit, onCollect,
 }: { group: StoreGroup; mode: GroupMode; initialSub: string | null; onClose: () => void } & Actions) {
-  const { rules } = useApp();
+  const { rules, includeFee } = useApp();
   const [sub, setSub] = useState<string | null>(initialSub);
   const isCollection = mode === 'collection';
   const done = isCollection ? isFeeCharged : hasStatus;
@@ -283,8 +283,12 @@ function StoreOrdersModal({
                 </span>
                 {!deposit && onOpenOrder && <Button size="sm" onClick={() => { onClose(); onOpenOrder(t); }}>주문확인</Button>}
                 {isCollection && !deposit && onWaiveFee && (
-                  <label className={cx('flex min-h-10 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-xs font-bold', feeOff ? 'border-sky-600 bg-sky-950 text-sky-200' : 'border-gray-700 bg-gray-900 text-gray-300')}>
-                    <input type="checkbox" className="h-4 w-4 accent-sky-500" checked={feeOff} onChange={e => onWaiveFee(t, e.target.checked)} />
+                  // 사입비 포함 계산이 꺼져 있으면 사입비를 받지 않으므로 제외할 것이 없다 (설정에서 켜면 활성화)
+                  <label
+                    title={includeFee ? undefined : '설정에서 "사입비 포함 계산"을 켜면 쓸 수 있습니다.'}
+                    className={cx('flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-xs font-bold', !includeFee ? 'cursor-not-allowed border-gray-800 bg-gray-950 text-gray-600 opacity-60' : feeOff ? 'cursor-pointer border-sky-600 bg-sky-950 text-sky-200' : 'cursor-pointer border-gray-700 bg-gray-900 text-gray-300')}
+                  >
+                    <input type="checkbox" className="h-4 w-4 accent-sky-500 disabled:cursor-not-allowed" checked={feeOff} disabled={!includeFee} onChange={e => onWaiveFee(t, e.target.checked)} />
                     사입비 제외
                   </label>
                 )}
