@@ -107,6 +107,9 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
                             {g.isMonthly && <span className="ml-1 rounded border border-emerald-700 px-1 text-emerald-400">월사입</span>}
                           </span>
                         )}
+                        {isCollection && g.rows.some(t => isDeposit(t) && String(t.remark || '').startsWith('수금 못함')) && (
+                          <span className="mt-0.5 block text-[11px] font-bold text-amber-300">수금 못함 {g.rows.filter(t => isDeposit(t) && String(t.remark || '').startsWith('수금 못함')).length}회 기록</span>
+                        )}
                         <span className={cx('mt-0.5 block text-[10px] font-normal text-gray-500', isCollection && 'lg:hidden')}>{[isCollection ? g.region : g.rows[0]?.market || '', `${g.orderCount}건`].filter(Boolean).join(' · ')}</span>
                       </td>
                       <td className={cx('hidden p-3 text-center', isCollection ? 'lg:table-cell' : 'sm:table-cell')}>
