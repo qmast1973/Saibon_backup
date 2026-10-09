@@ -56,20 +56,18 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
         if (buyer && buyerOf(t) !== buyer && t.manager !== buyer) return false;
         if (status === '미처리') return isOrder(t) && !isFeeCharged(t) && !isFeeWaived(t);
         if (status === '완료') return isOrder(t) && isFeeCharged(t);
-        if (status === '미수') {
-          const { billed, paid } = splitAmounts(t);
-          return billed - paid > 0;
-        }
+        // '미수 있음'은 주문 줄이 아니라 거래처 합계(이월 · 사입비 · 입금 포함)로 판단하므로 여기서는 줄을 빼지 않는다
         return true;
       }),
     [dayRows, storeQuery, buyer, status, rules],
   );
   const savedOrder = user?.collectionOrder;
   // 본인이 정한 거래처 순서(수금 도는 순서)대로 보여 준다. 정한 적이 없으면 지역 · 상호 순서.
-  const groups = useMemo(
-    () => applyStoreOrder(buildStoreGroups(filteredRows, { mode: 'collection', rules, users, includeFee, carry: shownCarry, markets }), savedOrder),
-    [filteredRows, rules, users, includeFee, shownCarry, savedOrder, markets],
-  );
+  const groups = useMemo(() => {
+    const built = buildStoreGroups(filteredRows, { mode: 'collection', rules, users, includeFee, carry: shownCarry, markets });
+    // 미수 있음: 받을 돈이 남은 거래처만 (입금을 다 한 거래처 · 초과 입금한 거래처는 뺀다)
+    return applyStoreOrder(status === '미수' ? built.filter(g => g.balance > 0) : built, savedOrder);
+  }, [filteredRows, rules, users, includeFee, shownCarry, savedOrder, markets, status]);
   const saveOrder = (order: string[]) =>
     saveStoreOrder(order, 'collectionOrder').catch(e => notify(e instanceof Error ? e.message : '순서를 저장하지 못했습니다.', 'error'));
   const dropStore = (store: string, toIndex: number) => saveOrder(moveToIndex(savedOrder, groups.map(g => g.store), store, toIndex));
