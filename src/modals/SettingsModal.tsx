@@ -37,7 +37,7 @@ export function SettingsModal({ nav, onClose }: { nav: Nav; onClose: () => void 
             checked={includeFee}
             onChange={setIncludeFee}
             label="사입비 포함 계산"
-            description={includeFee ? '수금관리 청구액에 완료 건당 사입비(4,000원)를 더합니다.' : '사입비 없이 대납금만 청구합니다.'}
+            description={includeFee ? '오늘부터 수금관리 청구액에 완료 건당 사입비(4,000원)를 더합니다. 끄면 끈 날부터만 적용되고 이전 날짜는 그대로입니다.' : '오늘부터 사입비 없이 대납금만 청구합니다. 이전 날짜에 받은 사입비는 그대로 계산됩니다.'}
           />
         )}
         {user?.role !== 'merchant' && (

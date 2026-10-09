@@ -212,7 +212,7 @@ export function StoreGroupTable({ groups, mode, reorder, ...actions }: { groups:
 function StoreOrdersModal({
   group, mode, initialSub, onClose, onOpenOrder, onToggleFee, onWaiveFee, onEditDeposit, onDeleteDeposit, onCollect,
 }: { group: StoreGroup; mode: GroupMode; initialSub: string | null; onClose: () => void } & Actions) {
-  const { rules, includeFee } = useApp();
+  const { rules, feeOnAt } = useApp();
   const [sub, setSub] = useState<string | null>(initialSub);
   const isCollection = mode === 'collection';
   const done = isCollection ? isFeeCharged : hasStatus;
@@ -260,6 +260,7 @@ function StoreOrdersModal({
           const deposit = isDeposit(t);
           const completed = done(t);
           const waived = isCollection && !deposit && isFeeWaived(t);
+          const feeActive = feeOnAt(t.date); // 그 주문 날짜에 사입비를 받는 날인지
           const feeOff = !!t.isFeeExcluded && !t.isFeeIncluded; // 처리 전 주문에도 미리 체크해 둘 수 있다
           const { billed, paid } = isCollection ? splitAmounts(t) : { billed: Number(t.expense) || 0, paid: Number(t.income) || 0 };
           return (
@@ -285,10 +286,10 @@ function StoreOrdersModal({
                 {isCollection && !deposit && onWaiveFee && (
                   // 사입비 포함 계산이 꺼져 있으면 사입비를 받지 않으므로 제외할 것이 없다 (설정에서 켜면 활성화)
                   <label
-                    title={includeFee ? undefined : '설정에서 "사입비 포함 계산"을 켜면 쓸 수 있습니다.'}
-                    className={cx('flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-xs font-bold', !includeFee ? 'cursor-not-allowed border-gray-800 bg-gray-950 text-gray-600 opacity-60' : feeOff ? 'cursor-pointer border-sky-600 bg-sky-950 text-sky-200' : 'cursor-pointer border-gray-700 bg-gray-900 text-gray-300')}
+                    title={feeActive ? undefined : '이 날짜는 사입비를 받지 않는 날이라 쓸 수 없습니다 (설정의 "사입비 포함 계산" 참고).'}
+                    className={cx('flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-xs font-bold', !feeActive ? 'cursor-not-allowed border-gray-800 bg-gray-950 text-gray-600 opacity-60' : feeOff ? 'cursor-pointer border-sky-600 bg-sky-950 text-sky-200' : 'cursor-pointer border-gray-700 bg-gray-900 text-gray-300')}
                   >
-                    <input type="checkbox" className="h-4 w-4 accent-sky-500 disabled:cursor-not-allowed" checked={feeOff} disabled={!includeFee} onChange={e => onWaiveFee(t, e.target.checked)} />
+                    <input type="checkbox" className="h-4 w-4 accent-sky-500 disabled:cursor-not-allowed" checked={feeOff} disabled={!feeActive} onChange={e => onWaiveFee(t, e.target.checked)} />
                     사입비 제외
                   </label>
                 )}

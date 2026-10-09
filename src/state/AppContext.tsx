@@ -3,13 +3,14 @@ import type { GroupRule, Transaction, User } from '../types';
 import * as cache from '../data/localCache';
 import { deleteOrder as deleteOrderRemote, flushOutbox, newOrderId, onWriteNotice, prepareForSave, saveOrders as saveOrdersRemote, subscribeOrders } from '../data/orders';
 import { saveGroupRules, subscribeGroupRules } from '../data/groupRules';
-import { fetchMarkets } from '../data/settings';
+import { fetchMarkets, saveFeePolicy, subscribeFeePolicy } from '../data/settings';
+import { feeOnAt as feeOnAtPolicy, withFeeFrom, type FeePolicyEntry } from '../domain/feePolicy';
 import { isPermissionDenied, saveStoreOrder as saveStoreOrderRemote, saveUser as saveUserRemote, signOutFirebase, subscribeUsers, userKey } from '../data/users';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onValue, ref } from 'firebase/database';
 import { auth, IS_DEMO, rtdb } from '../data/firebase';
 import { filterVisible, isRelevantForBuyer } from '../domain/access';
-import { normalizeDate } from '../domain/dates';
+import { getBusinessDate, normalizeDate } from '../domain/dates';
 import { normalizeMarket } from '../domain/markets';
 
 export interface Toast {
@@ -32,7 +33,10 @@ interface AppState {
   visibleOrders: Transaction[];
   rules: GroupRule[];
   markets: string[];
+  /** 오늘 사입비를 받는지 (설정 스위치의 현재 값) */
   includeFee: boolean;
+  /** 그 날짜에 사입비를 받는지 (끈 날짜부터만 받지 않고, 이전 날짜는 그대로) */
+  feeOnAt: (date: string) => boolean;
   toasts: Toast[];
 
   login: (user: User) => void;
@@ -95,7 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Transaction[]>([]);
   const [rules, setRules] = useState<GroupRule[]>(() => cache.loadCachedRules());
   const [markets, setMarkets] = useState<string[]>([]);
-  const [includeFee, setIncludeFeeState] = useState(cache.getIncludeFee);
+  const [feePolicy, setFeePolicy] = useState<FeePolicyEntry[]>([]);
   const [showFeeWaive, setShowFeeWaiveState] = useState(cache.getShowFeeWaive);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [usersAccess, setUsersAccess] = useState<AppState['usersAccess']>('unknown');
@@ -210,6 +214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cache.saveCachedOrders(clean);
     }, logError('주문'));
 
+    const unsubFee = subscribeFeePolicy(setFeePolicy, logError('사입비 설정'));
     const unsubRules = subscribeGroupRules(list => {
       rulesLoaded.current = true;
       setRules(list);
@@ -224,6 +229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       offConn();
       onWriteNotice(null);
       unsubRules();
+      unsubFee();
     };
   }, [notify, authKey]);
 
@@ -249,10 +255,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     cache.setShowFeeWaive(on);
     setShowFeeWaiveState(on);
   }, []);
+  const feeOnAt = useCallback((date: string) => feeOnAtPolicy(feePolicy, date), [feePolicy]);
+  const includeFee = useMemo(() => feeOnAtPolicy(feePolicy, getBusinessDate()), [feePolicy]);
+  // 오늘부터 바꾼다: 지난 날짜는 그대로 두어, 이미 받은 사입비가 초과 입금으로 바뀌지 않게 한다
   const setIncludeFee = useCallback((on: boolean) => {
-    cache.setIncludeFee(on);
-    setIncludeFeeState(on);
-  }, []);
+    const prev = feePolicy;
+    const next = withFeeFrom(prev, getBusinessDate(), on);
+    setFeePolicy(next);
+    saveFeePolicy(next).catch(e => {
+      setFeePolicy(prev);
+      notify(`사입비 설정을 저장하지 못했습니다: ${e instanceof Error ? e.message : e}`, 'error');
+    });
+  }, [feePolicy, notify]);
 
   const saveOrders = useCallback(async (list: Transaction[]) => {
     if (list.length === 0) return [];
@@ -321,7 +335,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const visibleOrders = useMemo(() => (user ? filterVisible(orders, user, users, rules) : []), [orders, user, users, rules]);
 
   const value: AppState = {
-    ready, usersAccess, online, serverConnected, user, users, orders, visibleOrders, rules, markets, includeFee, showFeeWaive, toasts,
+    ready, usersAccess, online, serverConnected, user, users, orders, visibleOrders, rules, markets, includeFee, feeOnAt, showFeeWaive, toasts,
     login, logout, setIncludeFee, setShowFeeWaive, setMarkets, notify, dismissToast,
     saveOrders, addOrdersFast, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
   };

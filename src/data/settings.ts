@@ -1,5 +1,6 @@
-import { get, ref, set } from 'firebase/database';
+import { get, onValue, ref, set } from 'firebase/database';
 import { doc, getDoc } from 'firebase/firestore';
+import { cleanFeePolicy, type FeePolicyEntry } from '../domain/feePolicy';
 import { DEFAULT_MARKETS } from '../domain/markets';
 import { firestore, IS_DEMO, rtdb, withTimeout, write } from './firebase';
 
@@ -42,4 +43,17 @@ export async function fetchMarkets(): Promise<string[]> {
 export async function saveMarkets(markets: string[]): Promise<void> {
   if (IS_DEMO) return;
   await write(set(marketsRef(), markets), '건물 목록 저장');
+}
+
+/** 사입비 적용 시작일 기록 (RTDB settings/feePolicy). 모든 기기가 같은 값을 쓴다. */
+const feePolicyRef = () => ref(rtdb, 'settings/feePolicy');
+
+export function subscribeFeePolicy(onChange: (policy: FeePolicyEntry[]) => void, onError?: (e: Error) => void) {
+  if (IS_DEMO) return () => undefined;
+  return onValue(feePolicyRef(), snap => onChange(cleanFeePolicy(snap.val())), e => onError?.(e));
+}
+
+export async function saveFeePolicy(policy: FeePolicyEntry[]): Promise<void> {
+  if (IS_DEMO) return;
+  await write(set(feePolicyRef(), policy.length ? policy : null), '사입비 설정 저장');
 }

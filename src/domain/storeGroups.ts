@@ -120,7 +120,7 @@ export function buildStoreGroups(
 export function computeCarryOver(
   rows: Transaction[],
   beforeDate: string,
-  opts: { rules: GroupRule[]; users: User[]; includeFee: boolean; markets?: string[] },
+  opts: { rules: GroupRule[]; users: User[]; includeFee: boolean | ((date: string) => boolean); markets?: string[] },
 ): CarryOver {
   const byDate = new Map<string, Transaction[]>();
   for (const t of rows) {
@@ -132,7 +132,9 @@ export function computeCarryOver(
 
   const total = new Map<string, { amount: number; region: string; manager: string; date: string }>();
   for (const [date, list] of byDate) {
-    for (const g of buildStoreGroups(list, { mode: 'collection', ...opts })) {
+    // 사입비를 받는지는 날짜마다 다를 수 있다 (끈 날짜부터만 받지 않는다)
+    const includeFee = typeof opts.includeFee === 'function' ? opts.includeFee(date) : opts.includeFee;
+    for (const g of buildStoreGroups(list, { mode: 'collection', rules: opts.rules, users: opts.users, markets: opts.markets, includeFee })) {
       const prev = total.get(g.store);
       const net = g.billed + g.fee - g.paid;
       total.set(g.store, {
