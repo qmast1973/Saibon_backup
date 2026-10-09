@@ -19,7 +19,7 @@ type StatusFilter = '' | '미처리' | '완료' | '미수';
 
 /** 수금관리: 날짜별로 거래처(대표 기준) 청구 · 입금 · 미수를 보고 수금을 입력 */
 export function CollectionScreen({ nav }: { nav: Nav }) {
-  const { user, users, rules, visibleOrders, includeFee, showFeeWaive, markets, saveOrders, patchOrderLocal, deleteOrder, saveStoreOrder, notify } = useApp();
+  const { user, users, rules, visibleOrders, feeOnAt, showFeeWaive, markets, saveOrders, patchOrderLocal, deleteOrder, saveStoreOrder, notify } = useApp();
   const [storeQuery, setStoreQuery] = useState('');
   const [buyer, setBuyer] = useState('');
   const [status, setStatus] = useState<StatusFilter>('');
@@ -36,9 +36,10 @@ export function CollectionScreen({ nav }: { nav: Nav }) {
   const { rows: olderVisible } = useOlderOrders(true);
 
   const carry = useMemo(
-    () => computeCarryOver([...olderVisible, ...visibleOrders], nav.date, { rules, users, includeFee, markets }),
-    [olderVisible, visibleOrders, nav.date, rules, users, includeFee, markets],
+    () => computeCarryOver([...olderVisible, ...visibleOrders], nav.date, { rules, users, includeFee: feeOnAt, markets }),
+    [olderVisible, visibleOrders, nav.date, rules, users, feeOnAt, markets],
   );
+  const includeFee = feeOnAt(nav.date); // 보고 있는 날짜에 사입비를 받는지
   const allGroups = useMemo(() => buildStoreGroups(dayRows, { mode: 'collection', rules, users, includeFee, carry, markets }), [dayRows, rules, users, includeFee, carry, markets]);
 
   // 필터가 걸려 있으면 그 조건에 맞는 거래처의 이월만 보여 준다 (이월 거래처는 오늘 주문이 없어 담당·처리 상태를 알 수 없다)
