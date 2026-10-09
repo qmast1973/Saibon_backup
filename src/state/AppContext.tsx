@@ -262,6 +262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const prev = feePolicy;
     const next = withFeeFrom(prev, getBusinessDate(), on);
     setFeePolicy(next);
+    notify(on ? '지금부터 사입비는 계산에 포함됩니다.' : '지금부터 사입비는 계산에서 제외됩니다.', 'info');
     saveFeePolicy(next).catch(e => {
       setFeePolicy(prev);
       notify(`사입비 설정을 저장하지 못했습니다: ${e instanceof Error ? e.message : e}`, 'error');
