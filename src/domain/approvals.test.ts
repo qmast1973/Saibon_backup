@@ -33,10 +33,11 @@ describe('승인 명단', () => {
 import { isRelevantForBuyer } from './access';
 describe('새 주문 알림 대상', () => {
   const order = { id: 'o', date: '2026-10-11', store: 'A', market: '디오트', floor: '1', room: '1호', manager: '', region: '', expense: 0, income: 0 } as never;
-  it('사입삼촌은 담당 건물만, 서브관리자는 전부, 관리자는 알림 대상이 아니다', () => {
+  it('사입삼촌 · 서브관리자는 자기 담당 건물만, 관리자는 알림 대상이 아니다', () => {
     expect(isRelevantForBuyer(order, { username: 'a', name: 'a', role: 'admin', approved: true })).toBe(false);
     expect(isRelevantForBuyer(order, { username: 'b', name: 'b', role: 'buyer', approved: true, allowedMarkets: ['APM'] })).toBe(false);
     expect(isRelevantForBuyer(order, { username: 'b', name: 'b', role: 'buyer', approved: true, allowedMarkets: ['디오트'] })).toBe(true);
-    expect(isRelevantForBuyer(order, { username: 'c', name: 'c', role: 'buyer', approved: true, isBuyerAdmin: true })).toBe(true);
+    expect(isRelevantForBuyer(order, { username: 'c', name: 'c', role: 'buyer', approved: true, isBuyerAdmin: true })).toBe(false); // 서브관리자도 담당이 아니면 알림 없음
+    expect(isRelevantForBuyer(order, { username: 'c', name: 'c', role: 'buyer', approved: true, isBuyerAdmin: true, allowedMarkets: ['디오트'] })).toBe(true);
   });
 });
