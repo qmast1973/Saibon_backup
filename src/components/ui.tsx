@@ -98,13 +98,19 @@ export function CloseButton({ onClick, label = '닫기' }: { onClick: () => void
 export const inputClass =
   'w-full rounded-xl border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-950 disabled:text-gray-400 disabled:cursor-not-allowed';
 
-export function Field({ label, hint, children, className }: { label: ReactNode; hint?: ReactNode; children: ReactNode; className?: string }) {
+/**
+ * 입력칸 + 제목. 기본은 label 이라 빈 곳을 눌러도 안의 입력칸이 눌린다.
+ * 버튼이 여러 개 들어가는 칸(건물 · 거래처 고르기, 회원 유형)은 group 으로 써야 한다:
+ * label 안에서는 빈 곳을 눌러도 맨 앞 버튼이 눌려 버리기 때문이다.
+ */
+export function Field({ label, hint, children, className, group }: { label: ReactNode; hint?: ReactNode; children: ReactNode; className?: string; group?: boolean }) {
+  const Tag = group ? 'div' : 'label';
   return (
-    <label className={cx('block', className)}>
+    <Tag className={cx('block', className)}>
       <span className="mb-1 block text-xs font-bold text-gray-300">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-[11px] text-gray-500">{hint}</span>}
-    </label>
+    </Tag>
   );
 }
 
