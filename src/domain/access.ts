@@ -38,6 +38,7 @@ export function filterVisible(all: Transaction[], user: User, users: User[], rul
 
 /** 사입삼촌에게 새 주문 알림을 보낼지 */
 export function isRelevantForBuyer(t: Transaction, user: User): boolean {
+  if (user.role === 'admin') return true; // 관리자는 모든 건물의 새 주문을 알림 받는다 (설정에서 끌 수 있다)
   if (user.isBuyerAdmin) return true;
   if ((user.allowedMarkets || []).some(m => normalizeMarket(m) === normalizeMarket(t.market))) return true;
   return !!user.assignedRegion && user.assignedRegion !== '전체' && t.region === user.assignedRegion;
