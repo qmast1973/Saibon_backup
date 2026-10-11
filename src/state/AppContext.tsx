@@ -45,6 +45,9 @@ interface AppState {
   logout: () => void;
   setIncludeFee: (on: boolean) => void;
   showFeeWaive: boolean;
+  /** 새 주문 알림(화면 안내 · 브라우저 알림)을 받는지. 이 기기에만 저장 */
+  notifyOrders: boolean;
+  setNotifyOrders: (on: boolean) => void;
   setShowFeeWaive: (on: boolean) => void;
   setMarkets: (markets: string[]) => void;
   notify: (text: string, tone?: Toast['tone']) => void;
@@ -103,6 +106,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [markets, setMarkets] = useState<string[]>([]);
   const [feePolicy, setFeePolicy] = useState<FeePolicyEntry[]>([]);
   const [showFeeWaive, setShowFeeWaiveState] = useState(cache.getShowFeeWaive);
+  const [notifyOrders, setNotifyOrdersState] = useState(cache.getNotifyOrders);
+  const notifyOrdersRef = useRef(notifyOrders);
+  notifyOrdersRef.current = notifyOrders;
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [usersAccess, setUsersAccess] = useState<AppState['usersAccess']>('unknown');
   // Firebase 로그인 상태가 바뀌면(로그인/로그아웃) 실시간 동기화를 다시 연결한다
@@ -211,7 +217,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (ordersLoaded.current && me?.role === 'buyer') {
         const known = new Set(ordersRef.current.map(t => t.id));
         const added = clean.filter(t => !known.has(t.id) && isRelevantForBuyer(t, me));
-        if (added.length > 0) announceNewOrders(added, notify);
+        if (added.length > 0 && notifyOrdersRef.current) announceNewOrders(added, notify);
       }
       setOrders(clean);
       serverOrdersRef.current = clean;
@@ -240,10 +246,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 사입삼촌: 브라우저 알림 권한 요청
   useEffect(() => {
-    if (user?.role === 'buyer' && 'Notification' in window && Notification.permission === 'default') {
+    if (user?.role === 'buyer' && notifyOrders && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => undefined);
     }
-  }, [user?.role]);
+  }, [user?.role, notifyOrders]);
 
   const login = useCallback((u: User) => {
     cache.saveSession(u);
@@ -256,6 +262,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const setNotifyOrders = useCallback((on: boolean) => {
+    cache.setNotifyOrders(on);
+    setNotifyOrdersState(on);
+    notify(on ? '새 주문 알림을 켰습니다.' : '새 주문 알림을 껐습니다. 다시 켜기 전까지 알림이 오지 않습니다.', 'info');
+  }, [notify]);
   const setShowFeeWaive = useCallback((on: boolean) => {
     cache.setShowFeeWaive(on);
     setShowFeeWaiveState(on);
@@ -341,8 +352,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const visibleOrders = useMemo(() => (user ? filterVisible(orders, user, users, rules) : []), [orders, user, users, rules]);
 
   const value: AppState = {
-    ready, usersAccess, online, serverConnected, user, users, orders, visibleOrders, rules, markets, includeFee, feeOnAt, showFeeWaive, toasts,
-    login, logout, setIncludeFee, setShowFeeWaive, setMarkets, notify, dismissToast,
+    ready, usersAccess, online, serverConnected, user, users, orders, visibleOrders, rules, markets, includeFee, feeOnAt, showFeeWaive, notifyOrders, toasts,
+    login, logout, setIncludeFee, setShowFeeWaive, setNotifyOrders, setMarkets, notify, dismissToast,
     saveOrders, addOrdersFast, deleteOrder, patchOrderLocal, replaceOrdersLocal, saveRules, saveUser, saveStoreOrder, removeUserLocal,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
