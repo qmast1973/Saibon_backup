@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { ArrowLeft, ShieldPlus } from 'lucide-react';
 import type { UserRole } from '../types';
-import { sendPasswordReset, signIn, signUp } from '../data/users';
+import { sendPasswordReset, signIn, signUp, signOutFirebase } from '../data/users';
 import * as cache from '../data/localCache';
 import { uniqueSorted } from '../domain/text';
 import { useApp } from '../state/AppContext';
@@ -107,6 +107,7 @@ export function AuthScreen() {
         },
         users,
       );
+      await signOutFirebase(); // 승인 전에는 로그인 상태로 두지 않는다
       setLoginId(created.email || reg.email);
       setPassword('');
       setMode('login');

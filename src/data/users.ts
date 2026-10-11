@@ -3,6 +3,7 @@ import { get, onValue, ref, remove, set } from 'firebase/database';
 import type { User, UserRole } from '../types';
 import { auth, IS_DEMO, rtdb, withTimeout, write } from './firebase';
 import { loadLegacyUsers } from './localCache';
+import { claimFirstAdmin, isApproved, noAdminRegistered } from './access';
 
 /** RTDB users/{username} */
 export const userKey = (username: string) => String(username || '').trim().toLowerCase();
@@ -135,7 +136,8 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   try {
     users = await fetchUsers();
   } catch (e) {
-    throw new Error(isPermissionDenied(e) ? '로그인은 됐지만 회원 정보를 읽을 권한이 없습니다. Firebase 데이터베이스 규칙을 확인해야 합니다.' : '회원 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+    if (!isPermissionDenied(e)) throw new Error('회원 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+    users = await recoverAccess(uid, email, hash);
   }
   user = users.find(u => u.uid === uid) || users.find(u => String(u.email || '').toLowerCase() === email.toLowerCase()) || findUser(users, identifier);
 
@@ -162,6 +164,23 @@ export async function signIn(identifier: string, password: string, knownUsers: U
     createdAt: new Date().toISOString(),
     createdBy: noAdmin ? 'first_admin' : 'firebase_login',
   });
+}
+
+/**
+ * 로그인은 됐는데 회원 목록을 읽을 수 없을 때(DB 규칙이 승인된 계정만 허용): 승인 전이면 대기 안내, 관리자가 아직 없으면 최초 관리자로 등록한다.
+ */
+async function recoverAccess(uid: string, email: string, hash: string): Promise<User[]> {
+  if (await isApproved(uid)) throw new Error('로그인은 됐지만 회원 정보를 읽을 권한이 없습니다. Firebase 데이터베이스 규칙을 확인해야 합니다.');
+  if (await noAdminRegistered().catch(() => false)) {
+    await claimFirstAdmin(uid);
+    return fetchUsers();
+  }
+  // 승인 전: 대기 기록을 남기고(이미 있으면 규칙이 막으므로 무시) 안내한다
+  const key = emailKey(email);
+  const pending = { uid, email, username: key, name: auth.currentUser?.displayName || key, role: 'merchant' as UserRole, approved: false, passwordHash: hash, createdAt: new Date().toISOString(), createdBy: 'firebase_login' };
+  await saveUser(pending).catch(() => saveUser({ ...pending, username: `${key}_${uid.slice(0, 6).toLowerCase()}` }).catch(() => undefined));
+  await signOutFirebase();
+  throw new Error('가입 승인 대기 중인 계정입니다. 관리자 승인 후 이용할 수 있습니다.');
 }
 
 /** 이메일 앞부분으로 만든 내부 고유키 (RTDB 키에 쓸 수 없는 문자는 뺀다) */
@@ -231,7 +250,7 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
   for (let n = 2; nicknameTaken(fresh, finalNick); n++) finalNick = `${nickname}${n}`;
 
   const isMerchant = input.role === 'merchant';
-  const saved = await saveUser({
+  const record: User = {
     uid,
     email,
     username: finalName,
@@ -249,7 +268,9 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
     assignedMerchants: [],
     createdAt: new Date().toISOString(),
     createdBy: 'self_register',
-  });
+  };
+  // DB 규칙상 남의 기록은 덮어쓸 수 없으므로, 같은 키가 있어 거부되면 뒤에 번호를 붙여 다시 만든다
+  const saved = await saveUser(record).catch(() => saveUser({ ...record, username: `${finalName}_${uid.slice(0, 6).toLowerCase()}` }));
   return saved;
 }
 
