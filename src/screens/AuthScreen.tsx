@@ -188,7 +188,7 @@ export function AuthScreen() {
 
           {mode === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3">
-              <Field label="회원 유형 *">
+              <Field group label="회원 유형 *">
                 <div className="grid grid-cols-3 gap-1.5">
                   {([['merchant', '상인(소매)'], ['local', '지방삼촌'], ['buyer', '사입삼촌']] as const).map(([role, label]) => (
                     <button

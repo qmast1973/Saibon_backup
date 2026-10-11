@@ -155,7 +155,7 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
                 {regions.map(r => <option key={r} value={r}>{r}</option>)}
               </Select>
             </Field>
-            <Field label={`담당 거래처 (${form.assignedMerchants.length}곳)`} hint={admin ? '관리자만 지정할 수 있습니다.' : undefined}>
+            <Field group label={`담당 거래처 (${form.assignedMerchants.length}곳)`} hint={admin ? '관리자만 지정할 수 있습니다.' : undefined}>
               <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
                 {merchants.length === 0 && <span className="text-xs text-gray-500">등록된 상인이 없습니다.</span>}
                 {merchants.map(m => {
@@ -176,7 +176,7 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
         {role === 'buyer' && (
           <>
             {admin && <Toggle checked={form.isBuyerAdmin} onChange={v => set('isBuyerAdmin', v)} label="서브관리자" description="전체 주문 보기, 회원 관리(사입삼촌), 데이터 관리 권한" />}
-            <Field label={`담당 건물 (${form.allowedMarkets.length}곳)`} hint={canEditMarkets ? '괄호 안은 같은 건물을 맡은 다른 사입삼촌' : '담당 건물은 관리자가 지정합니다.'}>
+            <Field group label={`담당 건물 (${form.allowedMarkets.length}곳)`} hint={canEditMarkets ? '괄호 안은 같은 건물을 맡은 다른 사입삼촌' : '담당 건물은 관리자가 지정합니다.'}>
               <div className="flex max-h-56 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
                 {buildingOptions.map(m => {
                   const on = form.allowedMarkets.includes(m);
