@@ -361,16 +361,11 @@ export async function measureStorage(onProgress?: (done: number, total: number) 
     for (const day of Object.values(data)) orderCount += Object.keys(day || {}).length;
   }
   onProgress?.(months.length, months.length);
-  // 주문 밖의 데이터(회원 · 규칙 등)
+  // 주문 밖의 데이터(회원 · 규칙 등). 보안 규칙상 루트 전체는 읽을 수 없으므로 알고 있는 항목만 센다.
   let otherBytes = 0;
-  const token = await auth.currentUser?.getIdToken().catch(() => '');
-  const res = await withTimeout(fetch(`${rtdb.app.options.databaseURL}/.json?shallow=true${token ? `&auth=${token}` : ''}`), 30000, '데이터 목록 조회');
-  if (res.ok) {
-    const top = Object.keys((await res.json()) || {}).filter(k => k !== 'orders');
-    for (const k of top) {
-      const snap = await withTimeout(get(ref(rtdb, k)), 60000, `${k} 용량 조회`);
-      otherBytes += byteLength(snap.val()) + k.length;
-    }
+  for (const k of ['users', 'settings', 'collectionGroupRules', 'approvedUids', 'adminUids']) {
+    const snap = await withTimeout(get(ref(rtdb, k)), 60000, `${k} 용량 조회`).catch(() => null);
+    if (snap) otherBytes += byteLength(snap.val()) + k.length;
   }
   return { totalBytes: ordersBytes + otherBytes, ordersBytes, orderCount, dayCount: keys.length, firstDate: keys[0] ?? '', lastDate: keys[keys.length - 1] ?? '' };
 }

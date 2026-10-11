@@ -1,0 +1,50 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "adminUids": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (root.child('adminUids').child(auth.uid).val() === true || (auth.uid === $uid && !root.child('adminUids').exists()))"
+      }
+    },
+
+    "approvedUids": {
+      ".read": "auth != null && root.child('adminUids').child(auth.uid).val() === true",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (root.child('adminUids').child(auth.uid).val() === true || (auth.uid === $uid && !root.child('adminUids').exists()))"
+      }
+    },
+
+    "users": {
+      ".read": "auth != null && root.child('approvedUids').child(auth.uid).val() === true",
+      "$key": {
+        ".write": "auth != null && (root.child('adminUids').child(auth.uid).val() === true || (root.child('approvedUids').child(auth.uid).val() === true && data.child('uid').val() === auth.uid && newData.child('uid').val() === auth.uid && newData.child('role').val() === data.child('role').val() && newData.child('approved').val() === data.child('approved').val() && newData.child('isBuyerAdmin').val() === data.child('isBuyerAdmin').val()) || (!data.exists() && newData.child('uid').val() === auth.uid && newData.child('approved').val() === false && newData.child('role').val() !== 'admin' && newData.child('isBuyerAdmin').val() !== true))"
+      }
+    },
+
+    "orders": {
+      ".read": "auth != null && root.child('approvedUids').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('approvedUids').child(auth.uid).val() === true"
+    },
+
+    "collectionGroupRules": {
+      ".read": "auth != null && root.child('approvedUids').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('approvedUids').child(auth.uid).val() === true"
+    },
+
+    "settings": {
+      ".read": "auth != null && root.child('approvedUids').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('approvedUids').child(auth.uid).val() === true"
+    },
+
+    "diag": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}

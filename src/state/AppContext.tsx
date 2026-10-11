@@ -9,7 +9,8 @@ import { isPermissionDenied, saveStoreOrder as saveStoreOrderRemote, saveUser as
 import { onAuthStateChanged } from 'firebase/auth';
 import { onValue, ref } from 'firebase/database';
 import { auth, IS_DEMO, rtdb } from '../data/firebase';
-import { filterVisible, isRelevantForBuyer } from '../domain/access';
+import { filterVisible, hasAdminAccess, isRelevantForBuyer } from '../domain/access';
+import { syncApprovals } from '../data/access';
 import { getBusinessDate, normalizeDate } from '../domain/dates';
 import { normalizeMarket } from '../domain/markets';
 
@@ -175,6 +176,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cache.saveCachedUsers(list);
       const me = userRef.current;
       if (!me) return;
+      // 관리자 · 서브관리자: 승인한 계정의 로그인 번호를 DB 규칙이 보는 승인 명단에 맞춰 둔다
+      if (hasAdminAccess(me) && auth.currentUser) syncApprovals(list, auth.currentUser.uid).catch(e => console.warn('승인 명단 동기화 실패:', e));
       const fresh = list.find(u => userKey(u.username) === userKey(me.username));
       if (fresh && fresh.role !== 'admin' && fresh.approved === false) {
         // 승인이 취소된 계정은 즉시 로그아웃
