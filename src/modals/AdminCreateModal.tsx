@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { createEmailAccountForOther, emailKey, fetchUsers, freeKey, isPermissionDenied, nicknameTaken, sha256, userKey } from '../data/users';
+import { createEmailAccountForOther, emailKey, fetchUsers, freeKey, isPermissionDenied, nicknameTaken, userKey, checkEmailPassword } from '../data/users';
 import { useApp } from '../state/AppContext';
 import { Button, Field, Input, LoginIdInput, Modal, PasswordInput } from '../components/ui';
 
@@ -41,7 +41,7 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
       const admins = users.filter(u => u.role === 'admin');
       if (admins.length > 0 && !loggedInAdmin) {
         const admin = admins.find(u => userKey(u.username) === userKey(form.authId) || String(u.email || '').toLowerCase() === userKey(form.authId));
-        if (!admin || admin.passwordHash !== (await sha256(form.authPw))) throw new Error('기존 관리자 이메일 또는 비밀번호가 올바르지 않습니다.');
+        if (!admin?.email || !(await checkEmailPassword(admin.email, form.authPw))) throw new Error('기존 관리자 이메일 또는 비밀번호가 올바르지 않습니다.');
       }
       if (nicknameTaken(users, nickname)) throw new Error('이미 사용 중인 닉네임입니다.');
       const username = freeKey(emailKey(email), users); // 내부 고유키 (이메일 앞부분)
@@ -55,7 +55,6 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
         name: form.name.trim(),
         email,
         phone: form.phone.trim(),
-        passwordHash: await sha256(form.pw),
         role: 'admin',
         approved: true,
         createdAt: new Date().toISOString(),

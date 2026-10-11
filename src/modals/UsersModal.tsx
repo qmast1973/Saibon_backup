@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { KeyRound, Layers, Pencil, Shield, ShieldPlus, Store, Trash2, Truck, UserCheck, Users } from 'lucide-react';
 import type { User, UserRole } from '../types';
 import type { Nav } from '../App';
-import { deleteUser, makeTempPassword, sendPasswordReset, sha256 } from '../data/users';
+import { deleteUser, sendPasswordReset } from '../data/users';
 import { isAdmin } from '../domain/access';
 import { useApp } from '../state/AppContext';
 import { Badge, Button, ConfirmDialog, Modal, cx } from '../components/ui';
@@ -19,18 +19,11 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
   const { user: me, users, saveUser, removeUserLocal, notify } = useApp();
   const admin = isAdmin(me);
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
-  const [tempPassword, setTempPassword] = useState<{ username: string; email?: string; password: string } | null>(null);
   const [onlyPending, setOnlyPending] = useState(false);
 
   const visible = (admin ? users : users.filter(u => u.role === 'buyer')).filter(u => !onlyPending || !u.approved);
   const pendingCount = users.filter(u => !u.approved && u.role !== 'admin').length;
   const run = (p: Promise<unknown>, ok?: string) => p.then(() => ok && notify(ok, 'success')).catch(e => notify(e instanceof Error ? e.message : '처리하지 못했습니다.', 'error'));
-
-  const resetPassword = async (u: User) => {
-    const password = makeTempPassword();
-    await saveUser({ ...u, passwordHash: await sha256(password) });
-    setTempPassword({ username: u.username, email: u.email, password });
-  };
 
   const remove = (u: User) => {
     if (u.role === 'admin' && users.filter(x => x.role === 'admin').length <= 1) return notify('마지막 관리자 계정은 삭제할 수 없습니다.', 'error');
@@ -40,7 +33,7 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
   return (
     <Modal
       title="회원 관리"
-      subtitle="가입 승인, 권한, 담당 건물/거래처, 비밀번호 초기화"
+      subtitle="가입 승인, 권한, 담당 건물/거래처, 비밀번호 재설정 메일"
       icon={<Users className="h-5 w-5 text-sky-400" />}
       onClose={onClose}
       size="xl"
@@ -97,7 +90,6 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
                         {u.email && (
                           <Button size="sm" onClick={() => run(sendPasswordReset(u.email!), `${u.email} 로 비밀번호 재설정 메일을 보냈습니다.`)}><KeyRound className="h-3.5 w-3.5" />재설정 메일</Button>
                         )}
-                        <Button size="sm" onClick={() => run(resetPassword(u))}>임시 비번</Button>
                         {admin && u.username !== me?.username && (
                           <Button size="sm" tone="danger" onClick={() => remove(u)} aria-label="삭제"><Trash2 className="h-3.5 w-3.5" /></Button>
                         )}
@@ -124,18 +116,6 @@ export function UsersModal({ nav, onClose }: { nav: Nav; onClose: () => void }) 
             run(deleteUser(u.username), '회원을 삭제했습니다.');
           }}
         />
-      )}
-      {tempPassword && (
-        <Modal title="임시 비밀번호 발급" onClose={() => setTempPassword(null)} size="sm" z="z-[400]">
-          <p className="text-sm text-gray-300">아래 정보를 회원에게 전달하고, 로그인 후 내 정보에서 비밀번호를 바꾸도록 안내하세요.</p>
-          <p className="mt-2 rounded-lg border border-amber-800 bg-amber-950/60 p-2 text-xs text-amber-200">
-            임시 비밀번호는 이 앱의 비밀번호만 바꿉니다. 이메일 로그인 비밀번호는 그대로라서, 그 기기에서 처음 로그인하는 경우엔 서버 접속이 안 될 수 있습니다. 이메일이 있는 회원은 '재설정 메일'을 쓰는 게 확실합니다.
-          </p>
-          <div className="mt-3 space-y-1 rounded-xl border border-gray-700 bg-gray-950 p-3 font-mono text-sm">
-            <p>이메일: <b className="text-white">{tempPassword.email || tempPassword.username}</b></p>
-            <p>임시 비밀번호: <b className="select-all text-amber-300">{tempPassword.password}</b></p>
-          </div>
-        </Modal>
       )}
     </Modal>
   );

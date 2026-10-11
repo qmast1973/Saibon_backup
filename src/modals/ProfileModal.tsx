@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { UserPen } from 'lucide-react';
 import type { UserRole } from '../types';
-import { changeOwnFirebasePassword, nicknameTaken, ROLE_LABEL, sha256, userKey } from '../data/users';
+import { changeOwnFirebasePassword, nicknameTaken, ROLE_LABEL, userKey } from '../data/users';
 import { hasAdminAccess, isAdmin } from '../domain/access';
 import { MARKET_SEPARATOR_RE, NON_BUILDING_MARKETS, normalizeMarket } from '../domain/markets';
 import { uniqueSorted } from '../domain/text';
@@ -95,7 +95,6 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
         assignedMerchants: role === 'local' ? form.assignedMerchants : [],
         isBuyerAdmin: role === 'buyer' && admin ? form.isBuyerAdmin : role === 'buyer' ? target.isBuyerAdmin : false,
         approved: admin ? form.approved : target.approved,
-        passwordHash: form.password ? await sha256(form.password) : target.passwordHash,
       });
       notify('회원정보를 저장했습니다.', 'success');
       onClose();
@@ -196,9 +195,12 @@ export function ProfileModal({ username, onClose }: { username: string; onClose:
 
         {admin && editingOther && <Toggle checked={form.approved} onChange={v => set('approved', v)} label="가입 승인" description="승인된 회원만 로그인할 수 있습니다." />}
 
-        <Field label="새 비밀번호" hint="바꿀 때만 입력 (6자 이상)">
-          <PasswordInput autoComplete="new-password" value={form.password} onChange={v => set('password', v)} placeholder="바꿀 때만 입력" />
-        </Field>
+        {!editingOther && (
+          <Field label="새 비밀번호" hint="바꿀 때만 입력 (6자 이상)">
+            <PasswordInput autoComplete="new-password" value={form.password} onChange={v => set('password', v)} placeholder="바꿀 때만 입력" />
+          </Field>
+        )}
+        {editingOther && <p className="rounded-lg bg-gray-950 px-3 py-2 text-xs text-gray-400">다른 회원의 비밀번호는 여기서 바꾸지 않습니다. 회원 관리의 "재설정 메일"로 본인이 직접 정하게 해 주세요.</p>}
       </form>
     </Modal>
   );
