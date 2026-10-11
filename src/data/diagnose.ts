@@ -18,8 +18,18 @@ export async function diagnoseSave(report: (line: string) => void): Promise<void
   if (!user) return;
 
   const connected = await new Promise<boolean>(resolve => {
-    const off = onValue(ref(rtdb, '.info/connected'), s => { if (s.val() === true) { off(); resolve(true); } });
-    setTimeout(() => { off(); resolve(false); }, 8000);
+    let done = false;
+    let off: () => void = () => undefined;
+    const finish = (v: boolean) => {
+      if (done) return;
+      done = true;
+      off();
+      resolve(v);
+    };
+    // 이미 연결돼 있으면 콜백이 onValue 가 돌아오기 전에 바로 불리므로, off 가 준비되기 전에도 안전하게 끝낸다
+    off = onValue(ref(rtdb, '.info/connected'), s => { if (s.val() === true) finish(true); });
+    if (done) off();
+    setTimeout(() => finish(false), 8000);
   });
   report(`2. 서버(웹소켓) 연결: ${connected ? '연결됨 ✓' : '8초 안에 연결되지 않음 ✗ (와이파이/LTE 전환, 방화벽, 절전 모드 등 확인)'}`);
 
