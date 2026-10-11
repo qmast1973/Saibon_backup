@@ -38,6 +38,7 @@ export function filterVisible(all: Transaction[], user: User, users: User[], rul
 
 /** 사입삼촌에게 새 주문 알림을 보낼지. 서브관리자(메인삼촌)도 일을 하는 사람이라 자기에게 배정된 건물(또는 지역)만 알린다. */
 export function isRelevantForBuyer(t: Transaction, user: User): boolean {
+  if (user.role === 'admin') return true; // 관리자는 알림 스위치를 켠 경우에만 이 함수까지 온다 (기본은 꺼짐): 모든 건물
   if ((user.allowedMarkets || []).some(m => normalizeMarket(m) === normalizeMarket(t.market))) return true;
   return !!user.assignedRegion && user.assignedRegion !== '전체' && t.region === user.assignedRegion;
 }

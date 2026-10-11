@@ -106,7 +106,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [markets, setMarkets] = useState<string[]>([]);
   const [feePolicy, setFeePolicy] = useState<FeePolicyEntry[]>([]);
   const [showFeeWaive, setShowFeeWaiveState] = useState(cache.getShowFeeWaive);
-  const [notifyOrders, setNotifyOrdersState] = useState(cache.getNotifyOrders);
+  const [notifyChoice, setNotifyChoice] = useState<boolean | null>(cache.getNotifyOrders);
+  // 정한 적이 없으면 사입삼촌은 켜짐, 관리자는 꺼짐 (관리자가 켜면 모든 건물의 새 주문 알림)
+  const notifyOrders = notifyChoice ?? user?.role !== 'admin';
   const notifyOrdersRef = useRef(notifyOrders);
   notifyOrdersRef.current = notifyOrders;
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -214,7 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubOrders = subscribeOrders(list => {
       const clean = tidy(list);
       const me = userRef.current;
-      if (ordersLoaded.current && me?.role === 'buyer') {
+      if (ordersLoaded.current && (me?.role === 'buyer' || me?.role === 'admin')) {
         const known = new Set(ordersRef.current.map(t => t.id));
         const added = clean.filter(t => !known.has(t.id) && isRelevantForBuyer(t, me));
         if (added.length > 0 && notifyOrdersRef.current) announceNewOrders(added, notify);
@@ -246,7 +248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 사입삼촌: 브라우저 알림 권한 요청
   useEffect(() => {
-    if (user?.role === 'buyer' && notifyOrders && 'Notification' in window && Notification.permission === 'default') {
+    if ((user?.role === 'buyer' || user?.role === 'admin') && notifyOrders && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => undefined);
     }
   }, [user?.role, notifyOrders]);
@@ -264,7 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setNotifyOrders = useCallback((on: boolean) => {
     cache.setNotifyOrders(on);
-    setNotifyOrdersState(on);
+    setNotifyChoice(on);
     notify(on ? '새 주문 알림을 켰습니다.' : '새 주문 알림을 껐습니다. 다시 켜기 전까지 알림이 오지 않습니다.', 'info');
   }, [notify]);
   const setShowFeeWaive = useCallback((on: boolean) => {

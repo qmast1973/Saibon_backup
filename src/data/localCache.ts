@@ -107,12 +107,13 @@ export const getShowFeeWaive = () => {
 };
 export const setShowFeeWaive = (on: boolean) => writeJsonRaw(KEYS.showFeeWaive, String(on));
 
-/** 새 주문 알림 받기 (이 기기에만 저장, 기본 켜짐) */
-export const getNotifyOrders = () => {
+/** 새 주문 알림 받기 (이 기기에만 저장). 아직 정한 적이 없으면 null (기본값은 계정 종류에 따라 다르다) */
+export const getNotifyOrders = (): boolean | null => {
   try {
-    return localStorage.getItem(KEYS.notifyOrders) !== 'false';
+    const v = localStorage.getItem(KEYS.notifyOrders);
+    return v === 'true' ? true : v === 'false' ? false : null;
   } catch {
-    return true;
+    return null;
   }
 };
 export const setNotifyOrders = (on: boolean) => writeJsonRaw(KEYS.notifyOrders, String(on));
