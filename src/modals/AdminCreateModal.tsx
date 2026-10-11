@@ -83,7 +83,7 @@ export function AdminCreateModal({ onClose }: { onClose: () => void }) {
         )}
         <Field label="이름 *"><Input required value={form.name} onChange={e => set('name')(e.target.value)} placeholder="관리자 이름" /></Field>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="이메일 *"><Input type="email" required value={form.email} onChange={e => set('email')(e.target.value)} placeholder="로그인에 쓸 이메일" /></Field>
+          <Field label="이메일 *" hint="실제로 쓰는 이메일을 입력하세요. 없는 이메일이면 비밀번호를 잊어버렸을 때 복구할 수 없습니다."><Input type="email" required value={form.email} onChange={e => set('email')(e.target.value)} placeholder="로그인에 쓸 이메일" /></Field>
           <Field label="전화번호"><Input type="tel" value={form.phone} onChange={e => set('phone')(e.target.value)} placeholder="선택" /></Field>
         </div>
         <Field label="닉네임 * (2~12자)"><Input required minLength={2} maxLength={12} value={form.id} onChange={e => set('id')(e.target.value)} autoComplete="off" /></Field>
