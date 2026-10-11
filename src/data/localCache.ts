@@ -13,6 +13,7 @@ const KEYS = {
   autoLogin: 'saipon.autoLogin',
   includeFee: 'saipon.includeFee',
   showFeeWaive: 'saipon.showFeeWaive',
+  notifyOrders: 'saipon.notifyOrders',
   fontScale: 'saipon.fontScale',
 };
 
@@ -105,6 +106,16 @@ export const getShowFeeWaive = () => {
   }
 };
 export const setShowFeeWaive = (on: boolean) => writeJsonRaw(KEYS.showFeeWaive, String(on));
+
+/** 새 주문 알림 받기 (이 기기에만 저장, 기본 켜짐) */
+export const getNotifyOrders = () => {
+  try {
+    return localStorage.getItem(KEYS.notifyOrders) !== 'false';
+  } catch {
+    return true;
+  }
+};
+export const setNotifyOrders = (on: boolean) => writeJsonRaw(KEYS.notifyOrders, String(on));
 
 /** 글자 크기 배율 (1 = 기본). 이 기기에만 저장한다. */
 export const getFontScale = () => {
