@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updatePassword, updateProfile } from 'firebase/auth';
-import { get, onValue, ref, remove, set } from 'firebase/database';
+import { get, onValue, ref, remove, set, update } from 'firebase/database';
 import type { User, UserRole } from '../types';
 import { auth, IS_DEMO, rtdb, withTimeout, write } from './firebase';
 import { loadLegacyUsers } from './localCache';
@@ -31,7 +31,8 @@ export async function fetchUsers(): Promise<User[]> {
 export async function saveUser(user: User): Promise<User> {
   const key = userKey(user.username);
   if (!key) throw new Error('아이디가 없습니다.');
-  const payload: User = JSON.parse(JSON.stringify({ ...user, username: key, updatedAt: new Date().toISOString() }));
+  const { passwordHash: _legacy, ...clean } = user; // 비밀번호 값은 DB에 저장하지 않는다 (비밀번호는 Firebase 로그인이 보관)
+  const payload: User = JSON.parse(JSON.stringify({ ...clean, username: key, updatedAt: new Date().toISOString() }));
   if (!IS_DEMO) await write(set(ref(rtdb, `users/${key}`), payload), '회원 저장');
   return payload;
 }
@@ -74,13 +75,6 @@ const findUser = (users: User[], identifier: string) => {
   );
 };
 
-/** 회원 정보 쓰기 권한을 위해 Firebase 이메일 로그인 상태를 만든다. 실패해도 조용히 넘어간다. */
-async function ensureFirebaseSession(email: string | undefined, password: string): Promise<boolean> {
-  if (!email) return !!auth.currentUser;
-  if (auth.currentUser?.email?.toLowerCase() === email.toLowerCase()) return true;
-  return signInWithEmailAndPassword(auth, email, password).then(() => true, () => false);
-}
-
 /**
  * 로그인.
  * DB 보안 규칙상 회원/주문 정보는 Firebase 이메일 로그인 상태에서만 읽을 수 있다.
@@ -89,15 +83,12 @@ async function ensureFirebaseSession(email: string | undefined, password: string
 export async function signIn(identifier: string, password: string, knownUsers: User[]): Promise<User> {
   const id = identifier.trim().toLowerCase();
   if (!id || !password) throw new Error('이메일과 비밀번호를 입력해주세요.');
-  const hash = await sha256(password);
 
   // 1) 회원 목록 읽기 (이미 Firebase 로그인 상태이거나 규칙이 열려 있으면 성공)
   let users = knownUsers;
   let denied = false;
-  let fromServer = false; // 서버에서 회원 목록을 실제로 읽었는지 (이 기기에 저장된 목록이면 false)
   try {
     users = await fetchUsers();
-    fromServer = true;
   } catch (e) {
     denied = isPermissionDenied(e);
     // 서버가 회원 목록을 안 보여 주면 이 기기에 저장된 목록(새 앱 + 원래 앱)으로 확인한다 (원래 앱과 같은 방식)
@@ -106,22 +97,11 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   }
   let user = findUser(users, identifier);
 
-  // 2) 저장된 비밀번호와 같으면 통과 (이메일이 있으면 Firebase 로그인 상태도 맞춰 둔다)
-  if (user?.passwordHash && user.passwordHash === hash) {
-    // 이메일 로그인 상태도 맞춰 둔다 (실패해도 원래 앱처럼 로그인은 진행)
-    await ensureFirebaseSession(user.email, password);
-    // 서버에 승인된 관리자가 하나도 없으면(새 DB 등) 이 계정이 최초 관리자가 된다
-    if (fromServer && !user.approved && !users.some(u => u.role === 'admin' && u.approved !== false)) {
-      return saveUser({ ...user, role: 'admin', approved: true, updatedAt: new Date().toISOString() });
-    }
-    return user;
-  }
-
-  // 3) Firebase 이메일 로그인으로 확인
+  // 2) Firebase 이메일 로그인으로 확인 (비밀번호는 Firebase 가 확인한다. 이 앱의 DB에는 비밀번호 값을 저장하지 않는다)
   const email = user?.email || (id.includes('@') ? id : '');
   if (!email) {
     if (denied) throw new Error('서버가 회원 정보를 보여 주지 않습니다. 가입할 때 쓴 이메일 주소로 로그인해 주세요.');
-    throw new Error(user && !user.passwordHash ? '비밀번호가 설정되지 않은 계정입니다. 관리자에게 비밀번호 초기화를 요청하세요.' : WRONG_LOGIN);
+    throw new Error(WRONG_LOGIN);
   }
 
   let uid = '';
@@ -137,7 +117,7 @@ export async function signIn(identifier: string, password: string, knownUsers: U
     users = await fetchUsers();
   } catch (e) {
     if (!isPermissionDenied(e)) throw new Error('회원 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
-    users = await recoverAccess(uid, email, hash);
+    users = await recoverAccess(uid, email);
   }
   user = users.find(u => u.uid === uid) || users.find(u => String(u.email || '').toLowerCase() === email.toLowerCase()) || findUser(users, identifier);
 
@@ -145,9 +125,8 @@ export async function signIn(identifier: string, password: string, knownUsers: U
   const noAdmin = !users.some(u => u.role === 'admin' && u.approved !== false);
 
   if (user) {
-    if (noAdmin) return saveUser({ ...user, role: 'admin', approved: true, passwordHash: hash, updatedAt: new Date().toISOString() });
-    // 이메일로 비밀번호를 바꾼 경우 등: 새 비밀번호로 갱신
-    return user.passwordHash === hash ? user : saveUser({ ...user, passwordHash: hash });
+    if (noAdmin) return saveUser({ ...user, role: 'admin', approved: true, updatedAt: new Date().toISOString() });
+    return user;
   }
 
   // 5) Firebase 계정만 있고 회원 정보가 없으면 승인 대기 회원으로 새로 만든다 (기존 아이디는 절대 덮어쓰지 않음)
@@ -160,7 +139,6 @@ export async function signIn(identifier: string, password: string, knownUsers: U
     name: auth.currentUser?.displayName || key,
     role: noAdmin ? 'admin' : 'merchant',
     approved: noAdmin,
-    passwordHash: hash,
     createdAt: new Date().toISOString(),
     createdBy: noAdmin ? 'first_admin' : 'firebase_login',
   });
@@ -169,7 +147,7 @@ export async function signIn(identifier: string, password: string, knownUsers: U
 /**
  * 로그인은 됐는데 회원 목록을 읽을 수 없을 때(DB 규칙이 승인된 계정만 허용): 승인 전이면 대기 안내, 관리자가 아직 없으면 최초 관리자로 등록한다.
  */
-async function recoverAccess(uid: string, email: string, hash: string): Promise<User[]> {
+async function recoverAccess(uid: string, email: string): Promise<User[]> {
   if (await isApproved(uid)) throw new Error('로그인은 됐지만 회원 정보를 읽을 권한이 없습니다. Firebase 데이터베이스 규칙을 확인해야 합니다.');
   if (await noAdminRegistered().catch(() => false)) {
     await claimFirstAdmin(uid);
@@ -177,7 +155,7 @@ async function recoverAccess(uid: string, email: string, hash: string): Promise<
   }
   // 승인 전: 대기 기록을 남기고(이미 있으면 규칙이 막으므로 무시) 안내한다
   const key = emailKey(email);
-  const pending = { uid, email, username: key, name: auth.currentUser?.displayName || key, role: 'merchant' as UserRole, approved: false, passwordHash: hash, createdAt: new Date().toISOString(), createdBy: 'firebase_login' };
+  const pending = { uid, email, username: key, name: auth.currentUser?.displayName || key, role: 'merchant' as UserRole, approved: false, createdAt: new Date().toISOString(), createdBy: 'firebase_login' };
   await saveUser(pending).catch(() => saveUser({ ...pending, username: `${key}_${uid.slice(0, 6).toLowerCase()}` }).catch(() => undefined));
   await signOutFirebase();
   throw new Error('가입 승인 대기 중인 계정입니다. 관리자 승인 후 이용할 수 있습니다.');
@@ -257,7 +235,6 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
     nickname: finalNick,
     name: input.name.trim(),
     phone: input.phone.trim(),
-    passwordHash: await sha256(input.password),
     role: input.role,
     approved: false,
     storeName: isMerchant ? input.storeName?.trim() : '',
@@ -272,6 +249,24 @@ export async function signUp(input: SignUpInput, existing: User[]): Promise<User
   // DB 규칙상 남의 기록은 덮어쓸 수 없으므로, 같은 키가 있어 거부되면 뒤에 번호를 붙여 다시 만든다
   const saved = await saveUser(record).catch(() => saveUser({ ...record, username: `${finalName}_${uid.slice(0, 6).toLowerCase()}` }));
   return saved;
+}
+
+/** 이메일 · 비밀번호가 맞는지 Firebase 로 확인한다 */
+export async function checkEmailPassword(email: string, password: string): Promise<boolean> {
+  try {
+    await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 예전에 DB 에 적어 둔 비밀번호 값을 지운다 (관리자 세션에서 한 번에) */
+export async function purgePasswordHashes(users: User[]): Promise<void> {
+  if (IS_DEMO) return;
+  const updates: Record<string, null> = {};
+  for (const u of users) if (u.passwordHash) updates[`users/${userKey(u.username)}/passwordHash`] = null;
+  if (Object.keys(updates).length > 0) await write(update(ref(rtdb), updates), '비밀번호 값 정리');
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
@@ -320,11 +315,6 @@ export async function createEmailAccountForOther(email: string, password: string
   } finally {
     await deleteApp(secondary).catch(() => undefined);
   }
-}
-
-/** 임시 비밀번호 발급: 영문 대문자+숫자 */
-export function makeTempPassword(): string {
-  return `PW${Math.random().toString(36).slice(2, 8).toUpperCase()}1`;
 }
 
 export const ROLE_LABEL: Record<UserRole, string> = {

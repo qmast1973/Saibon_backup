@@ -11,6 +11,7 @@ import { onValue, ref } from 'firebase/database';
 import { auth, IS_DEMO, rtdb } from '../data/firebase';
 import { filterVisible, hasAdminAccess, isRelevantForBuyer } from '../domain/access';
 import { syncApprovals } from '../data/access';
+import { purgePasswordHashes } from '../data/users';
 import { getBusinessDate, normalizeDate } from '../domain/dates';
 import { normalizeMarket } from '../domain/markets';
 
@@ -178,6 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!me) return;
       // 관리자 · 서브관리자: 승인한 계정의 로그인 번호를 DB 규칙이 보는 승인 명단에 맞춰 둔다
       if (hasAdminAccess(me) && auth.currentUser) syncApprovals(list, auth.currentUser.uid).catch(e => console.warn('승인 명단 동기화 실패:', e));
+      if (hasAdminAccess(me)) purgePasswordHashes(list).catch(e => console.warn('비밀번호 값 정리 실패:', e)); // 예전에 적어 둔 값 삭제
       const fresh = list.find(u => userKey(u.username) === userKey(me.username));
       if (fresh && fresh.role !== 'admin' && fresh.approved === false) {
         // 승인이 취소된 계정은 즉시 로그아웃

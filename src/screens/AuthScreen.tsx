@@ -257,7 +257,7 @@ export function AuthScreen() {
           {mode === 'reset' && (
             <form onSubmit={handleReset} className="space-y-3.5">
               <p className="text-xs leading-relaxed text-gray-400">
-                가입할 때 쓴 이메일로 재설정 링크를 보냅니다. 메일이 오지 않으면 관리자에게 임시 비밀번호 발급을 요청하세요.
+                가입할 때 쓴 이메일로 재설정 링크를 보냅니다. 메일이 오지 않으면 스팸함을 확인하고, 그래도 없으면 관리자에게 문의하세요.
               </p>
               <Field label="이메일">
                 <Input type="email" required value={resetEmail} onChange={e => setResetEmail(e.target.value.trim())} placeholder="name@example.com" />
