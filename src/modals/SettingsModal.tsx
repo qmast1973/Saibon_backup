@@ -32,12 +32,12 @@ export function SettingsModal({ nav, onClose }: { nav: Nav; onClose: () => void 
       <div className="space-y-2.5">
         <FontSizePicker />
         <MenuItem icon={<BookOpen className="h-5 w-5" />} title="도움말" description="기능 설명 · 키워드 검색" onClick={() => go('help')} />
-        {(user?.role === 'buyer' || user?.role === 'admin') && (
+        {user?.role === 'buyer' && (
           <Toggle
             checked={notifyOrders}
             onChange={setNotifyOrders}
             label="새 주문 알림"
-            description={notifyOrders ? (user?.role === 'admin' ? '모든 건물의 새 주문이 들어오면 알려 줍니다. 쉬는 날에는 꺼 두세요. (이 기기에만 적용)' : '담당 건물에 새 주문이 들어오면 알려 줍니다. 쉬는 날에는 꺼 두세요. (이 기기에만 적용)') : '알림을 받지 않습니다. 다시 켜기 전까지 새 주문이 들어와도 조용합니다. (이 기기에만 적용)'}
+            description={notifyOrders ? '담당 건물에 새 주문이 들어오면 알려 줍니다. 쉬는 날에는 꺼 두세요. (이 기기에만 적용)' : '알림을 받지 않습니다. 다시 켜기 전까지 새 주문이 들어와도 조용합니다. (이 기기에만 적용)'}
           />
         )}
         {user?.role !== 'merchant' && (

@@ -214,7 +214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubOrders = subscribeOrders(list => {
       const clean = tidy(list);
       const me = userRef.current;
-      if (ordersLoaded.current && (me?.role === 'buyer' || me?.role === 'admin')) {
+      if (ordersLoaded.current && me?.role === 'buyer') {
         const known = new Set(ordersRef.current.map(t => t.id));
         const added = clean.filter(t => !known.has(t.id) && isRelevantForBuyer(t, me));
         if (added.length > 0 && notifyOrdersRef.current) announceNewOrders(added, notify);
@@ -246,7 +246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 사입삼촌: 브라우저 알림 권한 요청
   useEffect(() => {
-    if ((user?.role === 'buyer' || user?.role === 'admin') && notifyOrders && 'Notification' in window && Notification.permission === 'default') {
+    if (user?.role === 'buyer' && notifyOrders && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => undefined);
     }
   }, [user?.role, notifyOrders]);
