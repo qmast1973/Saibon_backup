@@ -202,7 +202,7 @@ export function AuthScreen() {
                   ))}
                 </div>
               </Field>
-              <Field label="이메일 *">
+              <Field label="이메일 *" hint="실제로 쓰는 이메일을 입력하세요. 없는 이메일이면 비밀번호를 잊어버렸을 때 복구할 수 없습니다.">
                 <Input type="email" required autoComplete="email" value={reg.email} onChange={e => setRegField('email')(e.target.value.trim())} placeholder="name@example.com" />
               </Field>
               <Field label="닉네임 *" hint="앱에서 나를 구분하는 이름입니다. 2~12자, 한글 · 영문 · 숫자.">
